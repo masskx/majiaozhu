@@ -1,0 +1,6 @@
+pillow>=10
+numpy>=1.24
+fonttools>=4.40
+faster-whisper>=1.0        # automatic lyric transcription / timing (optional but recommended)
+opencc-python-reimplemented  # converts traditional characters from the transcription to simplified
+# system requirement: ffmpeg + ffprobe on PATH
