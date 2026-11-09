@@ -11,7 +11,7 @@ from .common import PUNCT, tokenize
 
 # things whisper likes to invent on music-only passages
 HALLUCINATIONS = ("字幕", "订阅", "點贊", "点赞", "谢谢观看", "感谢观看", "請不吝", "请不吝", "Amara", "明镜", "栏目",
-                  "以下是普通话")
+                  "以下是普通话", "独播剧场", "YoYo", "Television", "Exclusive")
 CREDIT_RE = re.compile(r"^(作词|作曲|编曲|演唱|歌手|制作|制作人|混音|母带|和声|吉他|贝斯|鼓|词|曲|监制|出品|OP|SP)\s*[:：]", re.I)
 
 
@@ -106,11 +106,24 @@ def transcribe(audio, model_name="large-v3-turbo", hint_text=""):
     print(f"> transcribing vocals with whisper '{model_name}' (first run downloads the model)...", file=sys.stderr)
     model = WhisperModel(model_name, device="cpu", compute_type="int8", cpu_threads=os.cpu_count() or 4)
     prompt = "以下是普通话歌曲的歌词。" + (hint_text[:120] if hint_text else "")
-    segs, _info = model.transcribe(audio, language="zh", vad_filter=True, word_timestamps=True,
+    stream = _run(model, audio, prompt, vad=True)
+    minutes = len(audio) / 16000 / 60
+    if len(stream) < 25 * minutes:
+        # heavy beats (DJ remixes etc.) make the voice-activity filter drop the vocals: retry without it
+        print("> few words found; retrying without the voice-activity filter...", file=sys.stderr)
+        alt = _run(model, audio, prompt, vad=False)
+        if len(alt) > len(stream):
+            stream = alt
+    return stream
+
+
+def _run(model, audio, prompt, vad):
+    length = len(audio) / 16000
+    segs, _info = model.transcribe(audio, language="zh", vad_filter=vad, word_timestamps=True,
                                    initial_prompt=prompt, condition_on_previous_text=False)
     stream = []
     for seg in segs:
-        if any(h in seg.text for h in HALLUCINATIONS):
+        if any(h in seg.text for h in HALLUCINATIONS) or seg.start >= length - 0.5:
             continue
         for w in seg.words or []:
             word = to_simplified(w.word)

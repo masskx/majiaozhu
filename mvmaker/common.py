@@ -56,14 +56,22 @@ def _coverage(name):
         return None
 
 
+# characters a font draws in a misleading form (Long Cang draws 时 like the traditional 時)
+FONT_OVERRIDES = {"hand": {"时": "brush"}}
+
+
 def text_runs(text, name):
     """Split text into (font_name, chunk) runs so glyphs missing from `name` use the fallback font."""
     cov = _coverage(name)
-    if cov is None:
+    over = FONT_OVERRIDES.get(name, {})
+    if cov is None and not over:
         return [(name, text)]
     runs = []
     for ch in text:
-        f = name if (ord(ch) in cov or ch.isspace()) else "fallback"
+        if ch in over:
+            f = over[ch]
+        else:
+            f = name if (cov is None or ord(ch) in cov or ch.isspace()) else "fallback"
         if runs and runs[-1][0] == f:
             runs[-1] = (f, runs[-1][1] + ch)
         else:
@@ -74,7 +82,7 @@ def text_runs(text, name):
 def text_width(text, name, size):
     w = 0.0
     for f, chunk in text_runs(text, name):
-        fs = size if f == name else int(size * 0.82)
+        fs = int(size * 0.82) if f == "fallback" else size
         w += font(f, fs).getlength(chunk)
     return w
 
@@ -82,7 +90,7 @@ def text_width(text, name, size):
 def draw_text(draw, x, baseline, text, name, size, fill, stroke_width=0, stroke_fill=None):
     """Draw text left-aligned on a baseline, mixing fonts for missing glyphs."""
     for f, chunk in text_runs(text, name):
-        fs = size if f == name else int(size * 0.82)
+        fs = int(size * 0.82) if f == "fallback" else size
         fo = font(f, fs)
         draw.text((x, baseline), chunk, font=fo, fill=fill, anchor="ls",
                   stroke_width=stroke_width, stroke_fill=stroke_fill)
