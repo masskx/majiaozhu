@@ -71,7 +71,13 @@ def plan_cuts(duration, lines, rng):
     return out
 
 
-def choose_expr(scene_mood, flash, rng):
+def choose_expr(scene_mood, flash, rng, song_mood="sad"):
+    if song_mood == "melancholy" and not flash:
+        # quiet sadness: mostly still faces, rarely open crying
+        hero = rng.choice(["sad", "sad", "neutral", "neutral", "cry"] if scene_mood != "sweet" else ["neutral", "happy"])
+        partner = rng.choice(["neutral", "sad", "happy"])
+        emote = rng.choice([None, None, "cloud", "sparkle"])
+        return hero, partner, emote
     if flash or scene_mood in ("sweet", "happy", "nostalgic"):
         hero = rng.choice(["happy", "happy", "love", "neutral"])
         partner = rng.choice(["happy", "love"])
@@ -97,18 +103,23 @@ def plan(duration, lines, mood, seed):
     partner = Look(*PARTNERS[rng.randrange(len(PARTNERS))])
     opening, middle, flashes = scn.POOLS[mood]
     first = rng.choice(opening)
+    # melancholy tells "evening into night": open at dusk, close somewhere dark and quiet
+    last = rng.choice(["bedroom", "city_night"]) if mood == "melancholy" else first
     cuts = plan_cuts(duration, lines, rng)
     n = len(cuts) - 1
     mids = [m for m in middle if m != first] or middle[:]
     rng.shuffle(mids)
     fl = flashes[:]
     rng.shuffle(fl)
-    k = max(1, round(n * 0.22)) if n >= 3 else 0
+    share = {"melancholy": 0.15}.get(mood, 0.22)   # how many shots are warm flashbacks
+    k = max(1, round(n * share)) if n >= 3 else 0
     flash_at = {int(n * (0.28 + 0.5 * j / max(1, k - 1))) if k > 1 else n // 2 for j in range(k)}
     seq, fi = [], 0
     for i in range(n):
-        if i == 0 or (i == n - 1 and n > 2):
+        if i == 0:
             name, flash = first, False
+        elif i == n - 1 and n > 2:
+            name, flash = last, False
         elif i in flash_at:
             name, flash = fl[fi % len(fl)], True
             fi += 1
@@ -132,7 +143,7 @@ def plan(duration, lines, mood, seed):
         sc = built[name]
         a, b = cuts[i], cuts[i + 1]
         D = b - a
-        hx, px, pe = choose_expr(sc.mood, flash, rng)
+        hx, px, pe = choose_expr(sc.mood, flash, rng, mood)
         pair = sc.seated is not None or flash or (sc.mood in ("sweet", "happy") and rng.random() < 0.7) or \
             (0 < i < n - 1 and rng.random() < (0.45 if mood == "sweet" else 0.3))
         if i == n - 1 and n > 2:
@@ -459,12 +470,16 @@ class Project:
         self.n_frames = int(duration * FPS)
         self.energy, self.pulse = audio_features(audio, self.n_frames)
         self.lines = lines
+        self.mood, self.seed = mood, seed
+        self.title_text, self.artist = title, artist
         self.shots = plan(duration, lines, mood, seed)
         first = lines[0].start if lines else 8
         self.title = TitleCard(title, artist, max(4.5, min(first - 0.8, 9.0)))
         self.subs = Subtitles(lines, style, seed)
         self.particles = Particles(seed)
-        self.overlay = paper_overlay(W, H, seed)
+        # evening grade for melancholy: a little cooler/violet, deeper vignette
+        self.grade = (0.96, 0.94, 1.0) if mood == "melancholy" else None
+        self.overlay = paper_overlay(W, H, seed, vignette=0.4 if self.grade else 0.32, tint=self.grade)
         self.singing = np.zeros(self.n_frames, bool)
         for ln in lines:
             self.singing[int(ln.start * FPS):int(ln.end * FPS)] = True
@@ -481,6 +496,11 @@ class Project:
         return len(self.shots) - 1
 
     def render_shot(self, shot, t, f):
+        world = self.render_world(shot, t, f)
+        return self.camera(shot, world, t)
+
+    def render_world(self, shot, t, f, actors=True):
+        """The scene at world resolution (before the camera): glows, stars, characters, emotes, foreground."""
         sc = shot.scene
         lt = t - shot.start
         D = max(0.1, shot.end - shot.start)
@@ -505,7 +525,7 @@ class Project:
                 d.polygon(star_points(x, y, r * 2.2, r * 0.5), fill=(255, 255, 240, int(90 + 150 * b)))
 
         boil = int(f / 5) % 3
-        for ai, a in enumerate(shot.actors):
+        for ai, a in enumerate(shot.actors if actors else []):
             s = a.scale / 20.0
             if a.t_walk > 0 and lt < a.t_walk:
                 p = max(0.0, lt) / a.t_walk
@@ -539,9 +559,14 @@ class Project:
                 hat = {"beanie": 80, "cap": 50, "flower": 15, "bow": 20, "hair": 10}.get(a.look.accessory, 0)
                 top = y - (BODY_H + LEG_H) * s + bob - hat * s
                 draw_emote(world, a.emote, x, top, t, s)
-        if sc.fg is not None:
+        if sc.fg is not None and actors:
             world.paste(sc.fg, (0, 0), sc.fg)
+        return world
 
+    def camera(self, shot, world, t):
+        sc = shot.scene
+        lt = t - shot.start
+        D = max(0.1, shot.end - shot.start)
         z0, z1, cx0, cx1, cy = shot.cam
         p = ease(min(1.0, max(0.0, lt / D)))
         z = z0 + (z1 - z0) * p
