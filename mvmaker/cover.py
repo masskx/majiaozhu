@@ -38,7 +38,9 @@ def split_tagline(text, max_chars=13):
     return out
 
 
-def _title_layer(size_wh, title, artist, x, y, size, align="center", max_w=None):
+def _title_layer(size_wh, title, artist, x, y, size, align="center", max_w=None, theme="default"):
+    from .render import TITLE_THEMES
+    th = TITLE_THEMES.get(theme, TITLE_THEMES["default"])
     """Brush title + gold underline + singer, with a soft shadow. (x, y) = title baseline anchor."""
     W, H = size_wh
     while max_w and size > 70 and text_width(title, "brush", size) > max_w:
@@ -50,23 +52,23 @@ def _title_layer(size_wh, title, artist, x, y, size, align="center", max_w=None)
     draw_text(ImageDraw.Draw(sh), x0 + 8, y + 9, title, "brush", size, (15, 10, 25, 150), stroke_width=12, stroke_fill=(15, 10, 25, 150))
     layer.alpha_composite(sh.filter(ImageFilter.GaussianBlur(7)))
     d = ImageDraw.Draw(layer)
-    draw_text(d, x0, y, title, "brush", size, (249, 241, 222), stroke_width=max(6, size // 22), stroke_fill=OUTLINE)
+    draw_text(d, x0, y, title, "brush", size, th["fill"], stroke_width=max(6, size // 22), stroke_fill=th["stroke"])
     # brush underline
     uw, uy = tw + 40, y + size * 0.16
     top = [(x0 - 20 + i, uy - 6 * math.sin(i / uw * math.pi)) for i in range(0, int(uw), 8)]
     bot = [(px, py + 4 + 9 * math.sin(min(1, (px - x0 + 20) / uw * 1.3) * math.pi)) for px, py in top]
-    d.polygon(top + bot[::-1], fill=(226, 178, 58), outline=OUTLINE)
+    d.polygon(top + bot[::-1], fill=th["line"], outline=th["stroke"])
     if artist:
         asz = max(40, int(size * 0.32))
         aw = text_width(artist, "brush", asz)
         ax = x0 + tw / 2 - aw / 2 if align == "center" else x0 + 4
-        draw_text(d, ax, uy + asz * 1.35, artist, "brush", asz, (240, 196, 92), stroke_width=4, stroke_fill=OUTLINE)
+        draw_text(d, ax, uy + asz * 1.35, artist, "brush", asz, th["artist"], stroke_width=4, stroke_fill=th["astroke"])
         return layer, uy + asz * 1.35
     return layer, uy + 20
 
 
-def _strip(text, seed, max_w):
-    subs = Subtitles([Line(text, 0, 1)], "paper", seed)
+def _strip(text, seed, max_w, style="paper"):
+    subs = Subtitles([Line(text, 0, 1)], style, seed)
     base, _dim, ink, _marks = subs._build(0)
     comp = base.copy()
     comp.alpha_composite(ink)
@@ -87,11 +89,12 @@ def make_cover(proj, kind, out_path, tagline=None):
             if proj.mood == "melancholy" else shot0.scene
     world = proj.render_world(Shot(0, 10, sc, [], shot0.cam), 3.0, 90, actors=False)
 
-    # extend the ground downward (stretching the bottom rows) so a tall crop can sit the character higher
+    # extend the ground downward so a tall crop can sit the character higher
     EXT = 360
     tall = Image.new("RGB", (WW, WH + EXT))
     tall.paste(world, (0, 0))
-    tall.paste(world.crop((0, WH - 30, WW, WH)).resize((WW, EXT + 10)), (0, WH - 10))
+    # mirror the bottom band downward (stretching smeared textured ground like flowers into streaks)
+    tall.paste(world.crop((0, WH - EXT, WW, WH)).transpose(Image.FLIP_TOP_BOTTOM), (0, WH))
     world, WHX = tall, WH + EXT
     fg_src = None
     if sc.fg is not None:
@@ -111,6 +114,11 @@ def make_cover(proj, kind, out_path, tagline=None):
     box = (x0, y0, x0 + cw, y0 + ch)
     img = world.resize((OW, OH), Image.LANCZOS, box=box)
     k = OW / cw
+    # the foreground (bench seat…) goes behind a character standing in front of it (fg_y), else over them
+    fg_first = getattr(sc, "fg_y", None) is not None and sc.ground > sc.fg_y
+    if fg_src is not None and fg_first:
+        fg = fg_src.resize((OW, OH), Image.LANCZOS, box=box)
+        img.paste(fg, (0, 0), fg)
 
     # lead character, drawn at cover resolution so it stays crisp
     leads = [x for x in shot0.actors if getattr(x, "who", "hero") == "hero"] or shot0.actors
@@ -118,11 +126,12 @@ def make_cover(proj, kind, out_path, tagline=None):
     if look:
         body_px = OW * (0.30 if portrait else 0.19)
         q = max(10, int(round(body_px / 240 * 20 / 1)))
-        expr = "sad" if proj.mood in ("melancholy", "sad") else "happy"
+        expr = (getattr(proj, "story", None) or {}).get("cover_face") or \
+            ("sad" if proj.mood in ("melancholy", "sad") else "happy")
         sp, (ax, ay) = sprite(look.key(), expr, False, 0, 0, 0, 0, q, sc.tint)
         fx_px, fy_px = (hero_x - x0) * k, (sc.ground - y0) * k
         img.paste(sp, (int(fx_px - ax), int(fy_px - ay)), sp)
-    if fg_src is not None:
+    if fg_src is not None and not fg_first:
         fg = fg_src.resize((OW, OH), Image.LANCZOS, box=box)
         img.paste(fg, (0, 0), fg)
 
@@ -136,19 +145,24 @@ def make_cover(proj, kind, out_path, tagline=None):
         ramp = np.clip(np.linspace(1, 0, int(OW * 0.58)), 0, 1)[None, :] * np.ones((OH, 1))
         full = np.zeros((OH, OW)); full[:, :ramp.shape[1]] = ramp
     shade = Image.fromarray((full ** 1.3 * 165).astype(np.uint8), "L")
-    img = Image.composite(Image.new("RGB", (OW, OH), (12, 10, 28)), img, shade)
+    sweet = proj.mood == "sweet"
+    # sweet covers: a soft pink veil behind the text instead of a dark one, and lifted shadows
+    img = Image.composite(Image.new("RGB", (OW, OH), (250, 214, 228) if sweet else (12, 10, 28)), img,
+                          shade.point(lambda v: int(v * 0.55)) if sweet else shade)
+    if sweet:
+        img = ImageChops.screen(img, Image.new("RGB", (OW, OH), (34, 20, 30)))
 
     img = img.convert("RGBA")
     title = proj.title_text
     if portrait:
-        layer, bottom = _title_layer((OW, OH), title, proj.artist, OW / 2, OH * 0.2, 190, max_w=OW * 0.86)
+        layer, bottom = _title_layer((OW, OH), title, proj.artist, OW / 2, OH * 0.2, 190, max_w=OW * 0.86, theme="sweet" if sweet else "default")
     else:
-        layer, bottom = _title_layer((OW, OH), title, proj.artist, OW * 0.08, OH * 0.3, 170, align="left", max_w=OW * 0.5)
+        layer, bottom = _title_layer((OW, OH), title, proj.artist, OW * 0.08, OH * 0.3, 170, align="left", max_w=OW * 0.5, theme="sweet" if sweet else "default")
     img.alpha_composite(layer)
 
     lines = split_tagline(tagline, 12 if portrait else 11)[:3]
     if lines:
-        strips = [_strip(t, proj.seed + i, OW * (0.9 if portrait else 0.5)) for i, t in enumerate(lines)]
+        strips = [_strip(t, proj.seed + i, OW * (0.9 if portrait else 0.5), "candy" if sweet else "paper") for i, t in enumerate(lines)]
         total = sum(s.height for s in strips) - 78 * (len(strips) - 1)
         y = (OH - total - 40) if portrait else max(bottom + 30, OH * 0.56)
         for i, s in enumerate(strips):

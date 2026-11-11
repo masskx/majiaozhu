@@ -5,27 +5,35 @@ videos in this repo (box-shaped characters, hand-inked scenes, karaoke subtitles
 
 | For every song | File | Notes |
 |---|---|---|
-| Lyric video | `output/<歌手-歌名>.mp4` | 1920×1080, 30 fps, H.264 + AAC, ~2 Mbit/s (≈60 MB for 4 min; long songs get a lower bitrate so files stay under ~85 MB) |
-| Portrait cover 3:4 | `output/<name>_cover_3x4.jpg` | 1080×1440, for the vertical feed and profile grid |
-| Landscape cover 4:3 | `output/<name>_cover_4x3.jpg` | 1440×1080, for horizontal placements |
-| Title + 文案 | `output/<name>_文案.md` | 发布标题, alternative titles, 封面短句 (also printed on the covers), the post text, hashtags |
-| Timed lyrics | `output/<name>.lrc` | edit and re-render to fix any lyric |
+| Lyric video | `<name>.mp4` | 1920×1080, 30 fps, H.264 + AAC, ~2 Mbit/s (≈60 MB for 4 min; long songs get a lower bitrate so files stay under ~85 MB) |
+| Portrait cover 3:4 | `<name>_cover_3x4.jpg` | 1080×1440, for the vertical feed and profile grid |
+| Landscape cover 4:3 | `<name>_cover_4x3.jpg` | 1440×1080, for horizontal placements |
+| Title + 文案 | `<name>_文案.md` | 发布标题, alternative titles, 封面短句 (also printed on the covers), the post text, hashtags |
+| Timed lyrics | `<name>.lrc` | edit and re-render to fix any lyric |
 
 The default look is **melancholy**: a quiet, evening, "missing someone" mood, the kind of video posted late at night.
 It opens at a sunset bus stop and ends in a dark room or a sleeping city.
 
 ```bash
 pip install -r mvmaker/requirements.txt              # ffmpeg/ffprobe must be on PATH
-python3 -m mvmaker.make_mv "input/歌手-歌名.mp3"         # video + both covers (+ .lrc)
+python3 -m mvmaker.make_mv "songs/歌手-歌名/歌手-歌名.mp3"   # video + both covers (+ .lrc), written into the song folder
 ```
 
 ### Repository layout
 
 ```
 majiaozhu/
-├── 11 蔡蔡-坏女孩.mp4 … 14 蔡蔡-等你下课.mp4   style references (not used by the code)
-├── input/                  source songs: <歌手-歌名>.mp3 (+ optional .txt / .lrc lyrics)
-├── output/                 everything produced per song (video, covers, 文案, .lrc)
+├── references/             the four style-reference videos (11 蔡蔡-坏女孩 … 14 蔡蔡-等你下课); not used by the code
+├── songs/                  one folder per song, everything for it side by side (index: songs/README.md)
+│   └── 歌手-歌名/
+│       ├── 歌手-歌名.mp3                 the song you sent
+│       ├── 歌手-歌名.txt                 lyrics, one sung line per line (input)
+│       ├── 歌手-歌名.lrc                 timed lyrics (generated; edit to fix words, then re-render)
+│       ├── 歌手-歌名.story.json          the storyboard: one shot per lyric line
+│       ├── 歌手-歌名_文案.md             发布标题 / 备选标题 / 封面短句 / 文案 / 话题
+│       ├── 歌手-歌名.mp4                 the video
+│       └── 歌手-歌名_cover_3x4.jpg, _cover_4x3.jpg   the covers
+├── archive/template-mode/  early videos made before storyboards (scenes not matched to lyrics), kept for reference
 ├── mvmaker/                the generator (see "Architecture" below)
 │   ├── make_mv.py          command line entry point
 │   ├── lyrics.py           lyric sources: LRC / text alignment / Whisper
@@ -93,12 +101,12 @@ majiaozhu/
 | Step | What the tool does |
 |---|---|
 | Title / singer | taken from the MP3 tags, otherwise from the file name (`歌手-歌名.mp3`). Override with `--title` / `--artist`. |
-| Lyrics + timing | `--lyrics x.lrc` uses its timings directly. `--lyrics x.txt` (plain lines) gets aligned to the vocals automatically. With no lyrics, the song is transcribed with Whisper. If the voice detector misses the vocals (DJ remixes, heavy beats), it retries without it. A `.lrc` file is always written so you can fix wrong words and re-run. |
-| Mood | `melancholy` (default), `sad` or `sweet`. Only clearly happy love songs switch to `sweet` automatically. The mood picks the scene pool, the faces and the colour grade. |
-| Storyboard (lyric-matched) | `input/<name>.story.json` describes **one shot per 1–2 lyric lines**: where it happens, what the characters do, which effects play. 「一个岛锁住一个人」 is a lone character on a tiny island with the camera pulling out; 「我等的船还不来」 is sitting at the end of a pier while a boat sails away; 「寂寞默默沉没沉入海」 is sinking underwater; 「往事浮上来」 is memory photos floating up. Claude writes it for every song (see "Storyboards" below). Without one, a fallback template mode picks scenes by mood. |
-| Scenes | sea and storyboard sets in dusk/night/storm/day palettes: beach, pier, island, underwater, storm at sea, cliff, lighthouse. Plus the earlier library: sunset bus stop, rainy street, night city, bedroom, snowy lake, neon bar, rooftop, park bench, school street, classroom. All drawn in code in the flat, outlined, paper-textured style. |
-| Character acts | stand, walk (including walking away into the distance), sit, back view, holding an umbrella, rocking in a boat, floating, sinking, dancing, fading away. A crowd of grey umbrella-carrying passers-by. Emotes: rain cloud, hearts, notes, sparkles. |
-| Lyric effects | tide that washes away footprints and a heart drawn in the sand, waves, storm swell, lightning, a boat passing on the horizon, seagulls, lighthouse beam, light rays, bubbles, seaweed, a cracked heart sinking, memory photos rising, a fast-spinning clock, shooting stars, aurora, fireworks. |
+| Lyrics + timing | `--lyrics x.lrc` uses its timings directly. `--lyrics x.txt` (plain lines) gets aligned to the vocals automatically (global Needleman-Wunsch alignment, so repeated verses and choruses stay in order). With no lyrics, the song is transcribed with Whisper. If the voice detector misses the vocals (DJ remixes, heavy beats, live recordings), detected by too few words or less than 60% of the song covered, it retries without it. A `.lrc` file is always written so you can fix wrong words and re-run. |
+| Mood / look | `melancholy` (default: evening, violet grade, paper subtitles), `sad`, or `sweet` (cute: pastel palettes, lifted candy-pink shadows, pink title, candy-pill karaoke subtitles with a heart, sweet covers). Set per song with `"mood"` in the storyboard or `--mood`. |
+| Storyboard (lyric-matched) | `songs/<name>/<name>.story.json` describes **one shot per 1–2 lyric lines**: where it happens, what the characters do, which effects play. 「一个岛锁住一个人」 is a lone character on a tiny island with the camera pulling out; 「我等的船还不来」 is sitting at the end of a pier while a boat sails away; 「寂寞默默沉没沉入海」 is sinking underwater; 「往事浮上来」 is memory photos floating up. Claude writes it for every song (see "Storyboards" below). Without one, a fallback template mode picks scenes by mood. |
+| Scenes | sea and storyboard sets in dusk/night/storm/day palettes: beach, pier, island, underwater, storm at sea, cliff, lighthouse, mountains with a river, spring meadow with blossom trees, snowy northern street (or pastel autumn street), kitchen, pastel autumn park with a bench. Palettes: dusk, night, storm, day, pastel, pastel_night. Plus the earlier library: sunset bus stop, rainy street, night city, bedroom, snowy lake, neon bar, rooftop, park bench, school street, classroom. All drawn in code in the flat, outlined, paper-textured style. |
+| Character acts | stand, walk (including walking away into the distance), sit, back view, holding an umbrella (or sheltering someone else), two in one boat, floating, sinking, dancing, fading away, a scarf, a glowing phone, white hair for old age. Crowds of grey (or colourful) passers-by. Emotes: rain cloud, hearts, notes, sparkles. |
+| Lyric effects | tide that washes away footprints and a heart drawn in the sand, waves, storm swell, lightning, a boat passing on the horizon, seagulls, lighthouse beam, light rays, bubbles, seaweed, a cracked heart sinking, memory photos rising, chat bubbles popping from a phone, a calendar shedding pages, a fast-spinning clock, steam from a pot, a warm beam of sunlight, a cute heart breaking in two, a thought bubble with someone's smiling face, summer turning into autumn, shooting stars, aurora, fireworks. |
 | Motion | walk cycles, blinking, bobbing to the music's energy, the lead "singing" (mouth follows vocal loudness), hand-drawn line boil, camera push-ins and pans, crossfades, rain, snow, petals, dust, fireflies, flickering lamps and neon. |
 | Text | brush-lettered title card with an animated underline. Notebook-paper karaoke subtitles (`--style paper`, default) or gold-on-dark tags (`--style banner`). |
 | Covers | the opening scene re-framed for 3:4 and 4:3, the lead character drawn sharply at cover size, title + singer, and the 封面短句 on paper strips. |
@@ -109,7 +117,7 @@ majiaozhu/
 ```bash
 python3 -m mvmaker.make_mv song.mp3 --stills 3,40,90            # a few PNG frames (+ covers) to check the look
 python3 -m mvmaker.make_mv song.mp3 --start 30 --length 15      # short preview clip
-python3 -m mvmaker.make_mv song.mp3 --lyrics output/song.lrc     # re-render after correcting the lyrics
+python3 -m mvmaker.make_mv song.mp3                             # re-render after correcting <name>.lrc (picked up automatically)
 python3 -m mvmaker.make_mv song.mp3 --covers-only --tagline "那年的雪很大/我一个人跳完了余生"
 python3 -m mvmaker.make_mv song.mp3 --seed 7                    # different scene order / characters
 python3 -m mvmaker.make_mv song.mp3 --mood sad --style banner   # rainier and more tearful, gold subtitle tags
@@ -123,7 +131,7 @@ python3 -m mvmaker.make_mv song.mp3 --mood sad --style banner   # rainier and mo
 | `--no-lyrics` | no subtitles |
 | `--mood auto/melancholy/sad/sweet` | scene set, expressions and colour grade |
 | `--style paper/banner` | subtitle look |
-| `--tagline TEXT` | cover line, `/` = line break. Default: the `封面短句：` line in `output/<name>_文案.md` |
+| `--tagline TEXT` | cover line, `/` = line break. Default: the `封面短句：` line in `<name>_文案.md` |
 | `--covers-only`, `--no-covers` | covers without video / video without covers |
 | `--seed N` | reshuffles scenes, characters and camera moves |
 | `--stills T1,T2…`, `--start`, `--length` | previews |
@@ -133,7 +141,7 @@ A 4-minute song takes about 5 minutes to render on 4 CPU cores, plus about 1 min
 
 ### The 文案 file
 
-Claude writes `output/<name>_文案.md` for each song (see CLAUDE.md). Format:
+Claude writes `songs/<name>/<name>_文案.md` for each song (see CLAUDE.md). Format:
 
 ```markdown
 # 歌名 · 歌手 发布文案
@@ -152,22 +160,22 @@ Claude writes `output/<name>_文案.md` for each song (see CLAUDE.md). Format:
 
 ```mermaid
 flowchart LR
-    MP3[input/歌手-歌名.mp3] --> CLI[make_mv.py<br/>names · mood · options]
+    MP3[songs/name/name.mp3] --> CLI[make_mv.py<br/>names · mood · options]
     LYR[.lrc / .txt lyrics] --> L
     CLI --> L[lyrics.py<br/>LRC parse · Whisper · text alignment]
     L -->|timed lines| P[render.Project]
     MP3 -->|loudness envelope| P
-    STORY[input/*.story.json<br/>one shot per lyric line] --> PLAN
+    STORY[name.story.json<br/>one shot per lyric line] --> PLAN
     P --> PLAN["story.plan_story()<br/>(template: plan())<br/>shots · sets · actors · fx · camera"]
     PLAN --> FX[fx.py<br/>tide · boat · beam · bubbles…]
     PLAN --> SC[scenes.py<br/>painted backgrounds]
     PLAN --> CH[character.py<br/>cached sprites]
     P --> FR["render(frame)<br/>world → camera → grade → text"]
     FR -->|raw RGB frames, multiprocessing| FF[ffmpeg<br/>H.264 + AAC]
-    FF --> MP4[output/*.mp4]
-    P --> CV[cover.py] --> JPG[output/*_cover_3x4.jpg<br/>output/*_cover_4x3.jpg]
-    CLI --> LRC[output/*.lrc]
-    CP[output/*_文案.md] -->|封面短句| CV
+    FF --> MP4[name.mp4]
+    P --> CV[cover.py] --> JPG[name_cover_3x4.jpg<br/>name_cover_4x3.jpg]
+    CLI --> LRC[name.lrc]
+    CP[name_文案.md] -->|封面短句| CV
 ```
 
 ### Modules
@@ -175,7 +183,7 @@ flowchart LR
 | Module | Responsibility | Key pieces |
 |---|---|---|
 | `make_mv.py` | CLI and orchestration | `guess_names` (tags/filename), `guess_mood` (lyric keywords), `read_copy` (封面短句), writes `.lrc`, calls covers and `encode` |
-| `lyrics.py` | turning a song into timed `Line`s | `parse_lrc`, `parse_text`, `transcribe` (faster-whisper with VAD fallback, hallucination filter, t2s), `lines_from_stream` (split/merge into subtitle lines), `align_text` (difflib match of your lyrics to the transcription, fills gaps) |
+| `lyrics.py` | turning a song into timed `Line`s | `parse_lrc`, `parse_text`, `transcribe` (faster-whisper with VAD fallback, hallucination filter, t2s), `lines_from_stream` (split/merge into subtitle lines), `align_text` (global alignment of your lyrics to the transcription, fills gaps) |
 | `render.py` | everything time-based | `audio_features` (energy and beat pulse per frame), `plan` (shot cuts on lyric starts, scene sequence per mood pool, actors, framing, camera), `Particles`, `draw_emote`, `TitleCard`, `Subtitles` (karaoke), `Project.render_world` / `camera` / `render`, `encode` |
 | `scenes.py` | backgrounds | one function per scene returns a `Scene` (bg, optional foreground layer, ground line, character slots, glows, stars, particle type, lighting tint). `POOLS` maps mood → opening, middle and flashback scenes |
 | `character.py` | the box characters | `Look` (colour + accessory), `sprite(...)` draws one pose (expression, blink, mouth, legs, arms, line-boil variant) and caches it |
@@ -198,7 +206,7 @@ More detail (planning rules, caching, performance, how to add scenes or characte
 
 ### Storyboards
 
-Each song gets `input/<歌手-歌名>.story.json`. It's plain data: a list of shots, each tied to lyric line indexes (from the `.lrc`):
+Each song gets `songs/<歌手-歌名>/<歌手-歌名>.story.json`. It's plain data: a list of shots, each tied to lyric line indexes (from the `.lrc`):
 
 ```json
 {"lines": [18], "note": "一个岛锁住一个人",
@@ -213,7 +221,7 @@ Each song gets `input/<歌手-歌名>.story.json`. It's plain data: a list of sh
 * `cam` is push, pull, pan_left, pan_right, close or static;
 * `"from": seconds` makes instrumental shots.
 
-The full field list is in the `mvmaker/story.py` docstring. The first complete example is `input/洋澜一-伤心太平洋.story.json` (48 shots).
+The full field list is in the `mvmaker/story.py` docstring. Complete examples: `songs/洋澜一-伤心太平洋/洋澜一-伤心太平洋.story.json` (48 shots, a sad song at sea), `songs/解忧邵帅-你是人间四月天/解忧邵帅-你是人间四月天.story.json` (37 shots, a tender love song) and `songs/牙牙乐格子兮-秋殇别恋/牙牙乐格子兮-秋殇别恋.story.json` (52 shots, a sad song in the cute and sweet style).
 
 ---
 

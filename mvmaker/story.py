@@ -1,9 +1,11 @@
-"""Storyboard mode: every shot is written for its lyric lines (input/<name>.story.json).
+"""Storyboard mode: every shot is written for its lyric lines (songs/<name>/<name>.story.json).
 
 Storyboard format (world coordinates are 2150 x 1209; the frame shows the middle ~1920 x 1080):
 {
   "hero": ["#e08a52", "cap"], "partner": ["#e59ab0", "flower"],      # optional looks
   "cover": 3,                                                       # optional: shot index used for the covers
+  "cover_face": "neutral",                                          # optional: lead's face on the covers
+  "mood": "sweet",                                                  # optional: whole-video look (melancholy | sad | sweet)
   "shots": [
     {"lines": [5, 6],                 # lyric line indexes this shot illustrates (or "from": seconds, for instrumentals)
      "note": "一个岛锁住一个人",          # the lyric, for humans
@@ -16,7 +18,12 @@ Storyboard format (world coordinates are 2150 x 1209; the frame shows the middle
      "cam": "pull"}                    # push | pull | pan_left | pan_right | close | static
   ]
 }
+who: hero ("I"), partner ("you"), extra (a third person, e.g. the one who took my place), crowd.
 acts: stand, walk (x -> x1), sit, float, sink (y -> y1), boat (sits in a rocking boat), dance.
+more cast keys: "look": [colour, accessory, accessory colour] (e.g. white "hair" for old age), "scarf": colour,
+  "phone": true (glowing phone in hand), "umbrella_dx": px (shift the umbrella over someone beside you),
+  "hull": 0 (sit in someone else's boat; 1.5 = a wider boat for two), "z": 1 (draw on top), "arms": 0/1/2,
+  crowd: {"who": "crowd", "n": 12, "umbrella": true, "colorful": true}
 """
 import json
 import math
@@ -28,14 +35,14 @@ from PIL import Image, ImageDraw
 from . import fx as fxm
 from . import sets
 from .character import BODY_H, LEG_H, Look, sprite
-from .common import OUTLINE, WH, WW, ease, hexrgb
+from .common import OUTLINE, WH, WW, add_glow, ease, hexrgb
 
 GREYS = ["#7d8496", "#8a8fa0", "#6f7688", "#9095a5", "#767b8c"]
 
 
 class SActor:
     def __init__(self, look, d, scene):
-        self.look = look
+        self.look = Look(*d["look"]) if d.get("look") else look   # e.g. white hair for old age: ["#e08a52","hair","#eeeeee"]
         self.who = d.get("who", "hero")
         self.face = d.get("face", "sad")
         self.act = d.get("act", "stand")
@@ -54,9 +61,14 @@ class SActor:
         if self.umbrella is True:
             self.umbrella = "#d9473f"
         self.emote = d.get("emote")
+        self.umbrella_dx = d.get("umbrella_dx", 30)   # shift the umbrella to shelter someone beside you
+        self.hull = d.get("hull", 1.0)                 # boat hull size; 0 = sitting in someone else's boat
+        self.scarf = d.get("scarf")                    # colour of a scarf
+        self.phone = d.get("phone", False)             # holding a glowing phone
+        self.z = d.get("z", 0)                         # drawing order among named characters
         self.arms = d.get("arms", 0)
         self.phase = d.get("phase", random.random() * 3)
-        self.sort_y = max(self.y0, self.y1)
+        self.sort_y = max(self.y0, self.y1) + 10000 * d.get("z", 0)
         # compatibility with the template renderer / covers
         self.expr, self.scale, self.x1_ = self.face, self.s0, self.x1
 
@@ -64,6 +76,7 @@ class SActor:
 def crowd(d, scene, rng):
     out = []
     n = d.get("n", 10)
+    palette = ["#e8a87c", "#85c1c8", "#f2d06b", "#c3a6e0", "#9fd39a", "#f19aa8"] if d.get("colorful") else GREYS
     for k in range(n):
         row = k % 2
         s = 15 if row == 0 else 23
@@ -71,7 +84,7 @@ def crowd(d, scene, rng):
         dirn = 1 if rng.random() < 0.5 else -1
         span = rng.uniform(500, 1100)
         x0 = rng.uniform(-200, WW + 200)
-        a = SActor(Look(rng.choice(GREYS), None), {"face": rng.choice(["neutral", "neutral", "sad"]), "act": "walk",
+        a = SActor(Look(rng.choice(palette), None), {"face": rng.choice(["neutral", "neutral", "sad"]), "act": "walk",
                     "x": x0, "x1": x0 + dirn * span, "y": y, "s": s, "back": rng.random() < 0.3,
                     "umbrella": "#4a4f63" if d.get("umbrella") else None}, scene)
         a.who = "crowd"
@@ -127,7 +140,9 @@ def plan_story(story, lines, duration, seed):
             if d.get("who") == "crowd":
                 actors += crowd(d, sc, rng)
             else:
-                actors.append(SActor(hero if d.get("who", "hero") == "hero" else partner, d, sc))
+                who = d.get("who", "hero")
+                base_look = hero if who == "hero" else partner if who == "partner" else Look("#8fb3d9", "cap")   # "extra"
+                actors.append(SActor(base_look, d, sc))
         cam = camera(sp.get("cam", "push"), sc, [a for a in actors if a.who != "crowd"], rng)
         sh = Shot(start, end, sc, actors, cam)
         sh.fx = sp.get("fx", [])
@@ -227,18 +242,34 @@ def draw_actor(world, a, ctx, f, ai, energy, pulse, singing):
     yy = y_feet + bob
     if a.umbrella:
         ud = ImageDraw.Draw(world, "RGBA")
-        _umbrella(ud, x + 30 * s, yy - (BODY_H + LEG_H + 170) * s, s, a.umbrella)
+        _umbrella(ud, x + a.umbrella_dx * s, yy - (BODY_H + LEG_H + 170) * s, s, a.umbrella)
     world.paste(img, (int(x - ax), int(yy - ay)), img)
     d = ImageDraw.Draw(world, "RGBA")
-    if a.act == "boat":
+    body_bottom = yy - LEG_H * s
+    if a.scarf:
+        col = hexrgb(a.scarf) if isinstance(a.scarf, str) else a.scarf
+        sy = body_bottom - BODY_H * s * 0.17      # below the mouth (the box body is also the head)
+        band = [(x - 124 * s, sy - 12 * s), (x + 124 * s, sy - 16 * s), (x + 124 * s, sy + 16 * s), (x - 124 * s, sy + 20 * s)]
+        d.polygon(band, fill=col + (255,), outline=OUTLINE)
+        d.line(band + [band[0]], fill=OUTLINE, width=max(2, int(4 * s)))
+        tail = [(x + 50 * s, sy), (x + 86 * s, sy), (x + 96 * s + 6 * s * math.sin(t * 3), sy + 90 * s), (x + 62 * s + 6 * s * math.sin(t * 3), sy + 92 * s)]
+        d.polygon(tail, fill=col + (255,), outline=OUTLINE)
+        d.line(tail + [tail[0]], fill=OUTLINE, width=max(2, int(4 * s)))
+    if a.phone:
+        px, py = x + 150 * s, body_bottom - BODY_H * s * 0.55
+        add_glow(world, px, py - 30 * s, 160 * s, (170, 210, 255), 0.6)
+        d.rounded_rectangle([px - 26 * s, py - 70 * s, px + 26 * s, py + 20 * s], radius=int(8 * s), fill=(40, 40, 60, 255), outline=OUTLINE, width=max(2, int(4 * s)))
+        d.rounded_rectangle([px - 19 * s, py - 62 * s, px + 19 * s, py + 10 * s], radius=int(5 * s), fill=(190, 225, 255, 255))
+    if a.act == "boat" and a.hull > 0:
         c, sn = math.cos(math.radians(-rot)), math.sin(math.radians(-rot))
 
         def R(px, py):
             return (x + px * s * c - py * s * sn, yy - LEG_H * s + px * s * sn + py * s * c)
-        hull = [R(-210, -40), R(210, -40), R(160, 40), R(-160, 40)]
+        hw = 210 * a.hull
+        hull = [R(-hw, -40), R(hw, -40), R(hw - 50, 40), R(-hw + 50, 40)]
         d.polygon(hull, fill=(110, 72, 58, 255), outline=OUTLINE)
         d.line(hull + [hull[0]], fill=OUTLINE, width=max(2, int(6 * s)))
-        d.line([R(-200, -22), R(200, -22)], fill=(150, 104, 80, 255), width=max(2, int(5 * s)))
+        d.line([R(-hw + 10, -22), R(hw - 10, -22)], fill=(150, 104, 80, 255), width=max(2, int(5 * s)))
     if a.act in ("float", "sink"):
         for k in range(4):
             ph = (t * 0.8 + k * 0.25) % 1.0

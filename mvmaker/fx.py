@@ -12,7 +12,7 @@ from PIL import Image, ImageChops, ImageDraw
 from .common import OUTLINE, WH, WW, add_glow, ease, heart_points, star_points
 
 BACK = {"waves", "tide", "footprints", "sand_heart", "boat_far", "seagulls", "rays", "beam", "lightning",
-        "shooting_star", "clock", "aurora", "fireworks", "sunbeam"}
+        "shooting_star", "clock", "aurora", "fireworks", "sunbeam", "calendar", "steam", "sunlight", "autumn_turn"}
 
 
 def _d(img):
@@ -340,6 +340,140 @@ def fx_fireworks(img, p, ctx):
             d.line([(x + R * 0.7 * math.cos(a), y + R * 0.7 * math.sin(a) + 30 * q * q),
                     (x + R * math.cos(a), y + R * math.sin(a) + 40 * q * q)], fill=col + (int(255 * (1 - q)),), width=4)
         add_glow(img, x, y, 220, col, 0.5 * (1 - q))
+
+
+def fx_messages(img, p, ctx):
+    """Chat bubbles popping up one after another (messages from you)."""
+    lt = ctx["lt"]
+    d = _d(img)
+    x0, y0 = p.get("x", 1300), p.get("y", 520)
+    for k in range(int(p.get("n", 5))):
+        t0 = 0.35 + k * p.get("every", 0.7)
+        if lt < t0:
+            break
+        a = min(1.0, (lt - t0) / 0.25)
+        y = y0 - k * 92 + (1 - a) * 30
+        w = 150 + 70 * ((k * 37) % 3)
+        x = x0 + (60 if k % 2 else -60) - w / 2
+        col = (250, 250, 245) if k % 2 else (152, 222, 140)
+        d.rounded_rectangle([x, y - 34, x + w, y + 34], radius=26, fill=col + (int(240 * a),), outline=OUTLINE + (int(255 * a),), width=4)
+        tail = (x + 30, y + 30) if k % 2 == 0 else (x + w - 30, y + 30)
+        d.polygon([tail, (tail[0] + (-18 if k % 2 == 0 else 18), tail[1] + 22), (tail[0] + (20 if k % 2 == 0 else -20), tail[1])],
+                  fill=col + (int(240 * a),))
+        if k % 3 == 2:
+            d.polygon(heart_points(x + w / 2, y, 18), fill=(235, 80, 110, int(255 * a)))
+        else:
+            for j in range(3 if k % 2 else 2):
+                d.line([(x + 24, y - 10 + j * 14), (x + w - 30 - j * 20, y - 10 + j * 14)], fill=(90, 90, 110, int(200 * a)), width=5)
+
+
+def fx_calendar(img, p, ctx):
+    """Wall calendar shedding its pages: days passing."""
+    t, lt = ctx["t"], ctx["lt"]
+    x, y = p.get("x", 420), p.get("y", 300)
+    d = _d(img)
+    w, h = 170, 190
+    sp = p.get("speed", 2.0)
+    day = int(lt * sp) + p.get("start", 1)
+    d.rectangle([x - w / 2, y - h / 2, x + w / 2, y + h / 2], fill=(250, 246, 236, 255), outline=OUTLINE, width=5)
+    d.rectangle([x - w / 2, y - h / 2, x + w / 2, y - h / 2 + 50], fill=(214, 82, 80, 255), outline=OUTLINE, width=5)
+    from .common import font
+    d.text((x, y + 30), str((day - 1) % 30 + 1), font=font("fallback", 84), fill=OUTLINE, anchor="mm")
+    ph = (lt * sp) % 1.0     # the page that just tore off, drifting down
+    if lt > 1 / sp:
+        px, py = x + 80 * ph, y + 60 + 260 * ph
+        page = [(px - 60, py - 60), (px + 60, py - 50), (px + 55, py + 60), (px - 65, py + 52)]
+        a = int(230 * (1 - ph))
+        d.polygon(page, fill=(250, 246, 236, a), outline=OUTLINE + (a,))
+
+
+def fx_steam(img, p, ctx):
+    t = ctx["t"]
+    x0, y0 = p.get("x", getattr(ctx["sc"], "pot", (1385, 600))[0]), p.get("y", getattr(ctx["sc"], "pot", (1385, 600))[1])
+    d = _d(img)
+    for k in range(6):
+        ph = (t * 0.45 + k / 6) % 1.0
+        x = x0 + 40 * math.sin(t * 1.5 + k * 2) * ph + (k - 3) * 12
+        y = y0 - ph * 300
+        r = 16 + 34 * ph
+        d.ellipse([x - r, y - r, x + r, y + r], fill=(255, 255, 255, int(110 * (1 - ph))))
+
+
+def fx_sunlight(img, p, ctx):
+    """A warm beam of sunlight falling on a spot (愿你的冬天永远不缺暖阳)."""
+    t = ctx["t"]
+    x, y = p.get("x", 1075), p.get("y", 990)
+    d = _d(img)
+    a = int(55 + 15 * math.sin(t * 1.3))
+    d.polygon([(x - 120 + 300, 0), (x + 120 + 300, 0), (x + 260, y), (x - 260, y)], fill=(255, 214, 140, a))
+    add_glow(img, x, y - 140, 360, (255, 200, 120), 0.55 + 0.1 * math.sin(t * 1.3))
+
+
+def fx_heart_break(img, p, ctx):
+    """A big cute heart that cracks and splits in two (爱已被时间撕裂)."""
+    lt, D, t = ctx["lt"], ctx["D"], ctx["t"]
+    x, y, size = p.get("x", 1075), p.get("y", 380), p.get("size", 150)
+    k = ease(min(1, max(0, (lt - D * p.get("at", 0.35)) / (D * 0.45))))
+    bob = 10 * math.sin(t * 2)
+    hp = heart_points(0, 0, size, 64)
+    for side in (-1, 1):
+        half = [(px, py) for px, py in hp if px * side >= -2] or hp
+        if k > 0:   # tilt each half away and let it drop a little
+            a = math.radians(18 * k * side)
+            half = [(px * math.cos(a) - py * math.sin(a), px * math.sin(a) + py * math.cos(a)) for px, py in half]
+        pts = [(x + px + side * 70 * k, y + py + bob + 60 * k * k) for px, py in half]
+        d = _d(img)
+        d.polygon(pts, fill=(244, 112, 158, 255))
+        d.line(pts + [pts[0]], fill=(196, 82, 128, 255), width=7, joint="curve")
+        hx = x + side * 70 * k + (-0.45 if side < 0 else 0.15) * size
+        d.ellipse([hx, y - 0.55 * size + bob + 60 * k * k, hx + 0.25 * size, y - 0.35 * size + bob + 60 * k * k], fill=(255, 220, 232, 200))
+    if k > 0:   # little sparkles where it cracked
+        for j in range(5):
+            r = 8 + 10 * (1 - k)
+            sx = x + 30 * math.cos(j * 1.3 + t) * k * 2
+            sy = y + 40 * math.sin(j * 1.9 + t) * k * 2
+            d.polygon(star_points(sx, sy, r, r * 0.35), fill=(255, 240, 200, int(220 * (1 - k * 0.6))))
+
+
+def fx_dream(img, p, ctx):
+    """Thought bubble with someone's smiling face in it (想念你微笑的脸)."""
+    from .character import Look, sprite
+    t, lt = ctx["t"], ctx["lt"]
+    x, y, r = p.get("x", 1350), p.get("y", 420), p.get("r", 190)
+    a = ease(min(1, lt / 0.6))
+    if a <= 0:
+        return
+    bob = 8 * math.sin(t * 1.6)
+    d = _d(img)
+    tail = p.get("from", (x - 260, y + 330))
+    for k, rr in enumerate((16, 26, 38)):
+        f = (k + 1) / 4
+        cx = tail[0] + (x - tail[0]) * f
+        cy = tail[1] + (y - tail[1]) * f + bob
+        d.ellipse([cx - rr, cy - rr, cx + rr, cy + rr], fill=(255, 255, 255, int(235 * a)), outline=(226, 160, 190, int(255 * a)), width=4)
+    for dx, dy, q in ((-0.6, 0.15, 0.55), (0.6, 0.15, 0.55), (0, -0.35, 0.62), (-0.35, -0.2, 0.55), (0.35, -0.2, 0.55), (0, 0.25, 0.7)):
+        rr = r * q
+        d.ellipse([x + dx * r - rr, y + dy * r - rr + bob, x + dx * r + rr, y + dy * r + rr + bob], fill=(255, 255, 255, int(240 * a)))
+    look = Look(p.get("color", "#e59ab0"), p.get("accessory", "flower"))
+    sp, (ax, ay) = sprite(look.key(), p.get("face", "happy"), False, 0, 0, 1 if (t % 2.4) < 1.2 else 0, 0, p.get("s", 12))
+    if a < 1:
+        sp = sp.copy()
+        sp.putalpha(sp.getchannel("A").point(lambda v: int(v * a)))
+    img.paste(sp, (int(x - ax), int(y + 0.45 * r - ay + bob)), sp)
+    for k in range(3):
+        ph = (t * 0.6 + k / 3) % 1
+        d.polygon(heart_points(x + (k - 1) * 90, y - r * 0.7 - ph * 90 + bob, 16), fill=(244, 112, 158, int(220 * (1 - ph) * a)))
+
+
+def fx_autumn_turn(img, p, ctx):
+    """Summer turning into autumn during the shot (时光旋转 夏天瞬间秋天): warm orange wash creeping in."""
+    lt, D = ctx["lt"], ctx["D"]
+    k = ease(min(1, max(0, (lt - D * 0.2) / (D * 0.6))))
+    if k <= 0:
+        return
+    warm = Image.new("RGB", img.size, (246, 160, 92))
+    blended = ImageChops.multiply(img.convert("RGB"), Image.blend(Image.new("RGB", img.size, (255, 255, 255)), warm, 0.5 * k))
+    img.paste(blended)
 
 
 def draw(img, effects, ctx, back):
