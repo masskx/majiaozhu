@@ -20,7 +20,7 @@ MP3 ─┬─ ffprobe ───────────── duration, title/ar
 Three sources, best first:
 
 1. **`.lrc`**: timestamps are used as-is. A line ends at the next line's start, capped at about 0.42 s per character + 1.2 s. Credit lines (作词：… etc.) are dropped.
-2. **`.txt` + transcription**: Whisper produces a stream of `(token, start, end, break_after)`, where a token is one CJK character or one latin word. `align_text` runs `difflib.SequenceMatcher` between your lyric tokens and the transcribed tokens:
+2. **`.txt` + transcription**: Whisper produces a stream of `(token, start, end, break_after)`, where a token is one CJK character or one latin word. `align_text` runs a global Needleman-Wunsch alignment (`global_align`, match +3, mismatch/gap −1) between your lyric tokens and the transcribed tokens. difflib's longest-block-first matching was replaced because it could pin verse 1 onto the audio of verse 2 when verses repeat. Then:
    * matched tokens take the transcribed times;
    * unmatched runs are spread evenly between their matched neighbours;
    * a run that would span an instrumental gap sticks to the side its own line is on;
@@ -44,6 +44,8 @@ Transcription details: faster-whisper `large-v3-turbo` with int8 on the CPU, `la
 * **Effects** (`fx.draw`): names in `fx.BACK` are drawn behind the characters, the rest in front.
   * Effects are stateless functions of `t` / `lt`. For example, the tide erases footprints and the sand heart once the highest water line so far has passed them (`_max_edge`).
   * Lightning is periodic (bolt + screen flash).
+* **Foreground**: a set's `fg` layer (bench seat, desks) is drawn over characters; with `fg_y` it only covers those standing behind that line, so people walking in front of a bench pass in front of it.
+* **Looks**: the storyboard's `"mood"` switches the whole video. `sweet` gives pastel grade + shadow lift (screen with (34, 20, 30)), `TITLE_THEMES["sweet"]`, `candy` subtitles and sweet covers.
 * **Camera** tuples are `(z0, z1, cx0, cx1, cy0[, cy1])`. `pull` starts at 1.3× on the first named character and opens to the full scene; `close` frames the character's face.
 * **Covers** use the storyboard's `"cover"` shot.
 * **Adding vocabulary**:

@@ -5,6 +5,7 @@ Storyboard format (world coordinates are 2150 x 1209; the frame shows the middle
   "hero": ["#e08a52", "cap"], "partner": ["#e59ab0", "flower"],      # optional looks
   "cover": 3,                                                       # optional: shot index used for the covers
   "cover_face": "neutral",                                          # optional: lead's face on the covers
+  "mood": "sweet",                                                  # optional: whole-video look (melancholy | sad | sweet)
   "shots": [
     {"lines": [5, 6],                 # lyric line indexes this shot illustrates (or "from": seconds, for instrumentals)
      "note": "一个岛锁住一个人",          # the lyric, for humans
@@ -17,6 +18,7 @@ Storyboard format (world coordinates are 2150 x 1209; the frame shows the middle
      "cam": "pull"}                    # push | pull | pan_left | pan_right | close | static
   ]
 }
+who: hero ("I"), partner ("you"), extra (a third person, e.g. the one who took my place), crowd.
 acts: stand, walk (x -> x1), sit, float, sink (y -> y1), boat (sits in a rocking boat), dance.
 more cast keys: "look": [colour, accessory, accessory colour] (e.g. white "hair" for old age), "scarf": colour,
   "phone": true (glowing phone in hand), "umbrella_dx": px (shift the umbrella over someone beside you),
@@ -138,7 +140,9 @@ def plan_story(story, lines, duration, seed):
             if d.get("who") == "crowd":
                 actors += crowd(d, sc, rng)
             else:
-                actors.append(SActor(hero if d.get("who", "hero") == "hero" else partner, d, sc))
+                who = d.get("who", "hero")
+                base_look = hero if who == "hero" else partner if who == "partner" else Look("#8fb3d9", "cap")   # "extra"
+                actors.append(SActor(base_look, d, sc))
         cam = camera(sp.get("cam", "push"), sc, [a for a in actors if a.who != "crowd"], rng)
         sh = Shot(start, end, sc, actors, cam)
         sh.fx = sp.get("fx", [])

@@ -78,7 +78,8 @@ def main(argv=None):
     ap.add_argument("--asr-model", default="large-v3-turbo", help="faster-whisper model (small is faster, less accurate)")
     ap.add_argument("--mood", choices=["auto", "melancholy", "sad", "sweet"], default="auto",
                     help="scene set: melancholy (default, quiet evening), sad (rain/tears), sweet")
-    ap.add_argument("--style", choices=["paper", "banner"], default="paper", help="lyric subtitle look")
+    ap.add_argument("--style", choices=["auto", "paper", "banner", "candy"], default="auto",
+                    help="lyric subtitle look (auto: candy for sweet, paper otherwise)")
     ap.add_argument("--seed", type=int, default=None, help="change for a different scene order / characters")
     ap.add_argument("--start", type=float, default=0.0, help="render from this second (preview)")
     ap.add_argument("--length", type=float, default=None, help="render only this many seconds (preview)")
@@ -123,7 +124,11 @@ def main(argv=None):
         sys.exit(f"storyboard not found: {a.story}")
     else:
         print("! no storyboard found: using template scenes (write input/<name>.story.json for lyric-matched shots)", file=sys.stderr)
-    proj = Project(a.audio, duration, lines, title, artist, mood=mood, style=a.style, seed=seed, story=story)
+    if story and story.get("mood"):
+        mood = story["mood"]   # the storyboard can set the look of the whole video (e.g. "sweet")
+        print(f"> mood from storyboard: {mood}", file=sys.stderr)
+    style = a.style if a.style != "auto" else ("candy" if mood == "sweet" else "paper")
+    proj = Project(a.audio, duration, lines, title, artist, mood=mood, style=style, seed=seed, story=story)
     proj.describe()
     base = os.path.splitext(out)[0]
     tagline = a.tagline or read_copy(base + "_文案.md")

@@ -1,5 +1,4 @@
 """Getting timed lyric lines: from an .lrc file, from plain text aligned to the audio, or by transcription."""
-import difflib
 import os
 import re
 import subprocess
@@ -212,6 +211,49 @@ def lines_from_stream(stream, max_len=14, gap=0.9):
     return lines
 
 
+def global_align(a, b, match=3, mismatch=-1, gap=-1):
+    """Needleman-Wunsch alignment of two token lists; returns matched index pairs (i, j).
+
+    Unlike difflib's longest-block-first matching, this keeps repeated verses/choruses in order:
+    the first chorus in the lyrics lands on the first chorus in the audio.
+    """
+    n, m = len(a), len(b)
+    if not n or not m:
+        return []
+    import numpy as np
+    score = np.zeros((n + 1, m + 1), np.int32)
+    score[:, 0] = np.arange(n + 1) * gap
+    score[0, :] = np.arange(m + 1) * gap
+    move = np.zeros((n + 1, m + 1), np.int8)       # 0 diag, 1 up (skip a), 2 left (skip b)
+    move[1:, 0], move[0, 1:] = 1, 2
+    bj = np.array([hash(x) for x in b])
+    for i in range(1, n + 1):
+        eq = np.where(bj == hash(a[i - 1]), match, mismatch)
+        diag = score[i - 1, :-1] + eq
+        up = score[i - 1, 1:] + gap
+        best = np.maximum(diag, up)
+        mv = np.where(diag >= up, 0, 1).astype(np.int8)
+        row = score[i]
+        for j in range(1, m + 1):          # the left move depends on this row, so it is sequential
+            left = row[j - 1] + gap
+            if left > best[j - 1]:
+                row[j], move[i, j] = left, 2
+            else:
+                row[j], move[i, j] = best[j - 1], mv[j - 1]
+    pairs, i, j = [], n, m
+    while i > 0 and j > 0:
+        mv = move[i, j]
+        if mv == 0:
+            if a[i - 1] == b[j - 1]:
+                pairs.append((i - 1, j - 1))
+            i, j = i - 1, j - 1
+        elif mv == 1:
+            i -= 1
+        else:
+            j -= 1
+    return pairs[::-1]
+
+
 def align_text(texts, stream):
     """Give each user-supplied lyric line times by matching its characters against the transcription."""
     lyr = []  # (line_idx, span_a, span_b, token)
@@ -222,12 +264,10 @@ def align_text(texts, stream):
         return []
     asr = [s[0].lower() for s in stream]
     times = [None] * len(lyr)
-    sm = difflib.SequenceMatcher(None, [x[3] for x in lyr], asr, autojunk=False)
     matched = 0
-    for a, b, size in sm.get_matching_blocks():
-        for k in range(size):
-            times[a + k] = (stream[b + k][1], stream[b + k][2])
-            matched += 1
+    for i, j in global_align([x[3] for x in lyr], asr):
+        times[i] = (stream[j][1], stream[j][2])
+        matched += 1
     ratio = matched / len(lyr)
     print(f"> lyric alignment: matched {matched}/{len(lyr)} characters ({ratio:.0%})", file=sys.stderr)
     if matched == 0:

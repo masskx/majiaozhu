@@ -315,8 +315,15 @@ def draw_emote(img, kind, x, top, t, s):
 
 
 # ---------------------------------------------------------------- title card
+TITLE_THEMES = {
+    "default": {"fill": (249, 241, 222), "stroke": OUTLINE, "line": (226, 178, 58), "artist": (238, 192, 84), "astroke": OUTLINE},
+    "sweet": {"fill": (255, 251, 253), "stroke": (196, 82, 128), "line": (247, 160, 190), "artist": (255, 255, 255), "astroke": (226, 104, 150)},
+}
+
+
 class TitleCard:
-    def __init__(self, title, artist, end_time):
+    def __init__(self, title, artist, end_time, theme="default"):
+        th = TITLE_THEMES.get(theme, TITLE_THEMES["default"])
         self.end = end_time
         self.title, self.artist = title, artist
         size = 190
@@ -333,7 +340,7 @@ class TitleCard:
             draw_text(dd, 30 + 6, size * 1.25 + 7, ch, "brush", size, (20, 14, 26, 110), stroke_width=9, stroke_fill=(20, 14, 26, 110))
             img = img.filter(ImageFilter.GaussianBlur(4))
             dd = ImageDraw.Draw(img)
-            draw_text(dd, 30, size * 1.25, ch, "brush", size, (249, 241, 222), stroke_width=8, stroke_fill=OUTLINE)
+            draw_text(dd, 30, size * 1.25, ch, "brush", size, th["fill"], stroke_width=8, stroke_fill=th["stroke"])
             self.chars.append((img, x - 30, self.base - size * 1.25))
             x += w + size * 0.04
         self.width = x - self.x
@@ -343,14 +350,14 @@ class TitleCard:
         ud = ImageDraw.Draw(ul)
         pts_top = [(10 + i, 18 - 6 * math.sin(i / uw * math.pi) + 3 * (i / uw)) for i in range(0, uw, 8)]
         pts_bot = [(10 + i, 18 - 6 * math.sin(i / uw * math.pi) + 3 * (i / uw) + 3 + 7 * math.sin(min(1, i / uw * 1.3) * math.pi)) for i in range(0, uw, 8)]
-        ud.polygon(pts_top + pts_bot[::-1], fill=(226, 178, 58), outline=OUTLINE)
+        ud.polygon(pts_top + pts_bot[::-1], fill=th["line"], outline=th["stroke"])
         self.underline = ul
         self.ul_pos = (self.x - 30, int(self.base + 18))
         asz = max(46, int(size * 0.36))
         aw = text_width(artist, "brush", asz) if artist else 0
         ai = Image.new("RGBA", (int(aw + 40), int(asz * 1.6)), (0, 0, 0, 0))
         if artist:
-            draw_text(ImageDraw.Draw(ai), 20, asz * 1.2, artist, "brush", asz, (238, 192, 84), stroke_width=4, stroke_fill=OUTLINE)
+            draw_text(ImageDraw.Draw(ai), 20, asz * 1.2, artist, "brush", asz, th["artist"], stroke_width=4, stroke_fill=th["astroke"])
         self.artist_img = ai
         self.artist_pos = (int(self.x + self.width / 2 - ai.width / 2), int(self.base + 60))
 
@@ -402,13 +409,15 @@ class Subtitles:
         if len(self.cache) > 6:
             self.cache.pop(next(iter(self.cache)))
         ln = self.lines[i]
-        fname = "hand" if self.style == "paper" else "brush"
-        size = 62 if self.style == "paper" else 54
+        fname = "hand" if self.style in ("paper", "candy") else "brush"
+        size = 62 if self.style in ("paper", "candy") else 54
         while size > 34 and text_width(ln.text, fname, size) > 1500:
             size -= 4
         tw = text_width(ln.text, fname, size)
         if self.style == "paper":
             padl, padr, h = 80, 50, 104
+        elif self.style == "candy":
+            padl, padr, h = 92, 60, 100
         else:
             padl, padr, h = 70, 70, 92
         sw, sh = int(tw + padl + padr), h
@@ -424,16 +433,26 @@ class Subtitles:
                 d.line([(m, y), (m + sw, y)], fill=(160, 185, 230, 150), width=2)
             d.line([(m + 44, m), (m + 44, m + sh)], fill=(228, 130, 130, 180), width=2)
             d.polygon([(m - 18, m + 8), (m + 50, m - 16), (m + 62, m + 14), (m - 6, m + 38)], fill=(242, 160, 182, 150))
+        elif self.style == "candy":   # cute: a white pill with a pink border and a little heart
+            d.rounded_rectangle([m + 3, m + 8, m + sw + 3, m + sh + 8], radius=sh // 2, fill=(240, 130, 170, 90))
+            base = base.filter(ImageFilter.GaussianBlur(5))
+            d = ImageDraw.Draw(base, "RGBA")
+            d.rounded_rectangle([m, m, m + sw, m + sh], radius=sh // 2, fill=(255, 251, 253, 250), outline=(247, 150, 186, 255), width=6)
+            d.rounded_rectangle([m + 12, m + 12, m + sw - 12, m + sh - 12], radius=sh // 2 - 12, outline=(252, 214, 228, 255), width=3)
+            d.polygon(heart_points(m + 52, m + sh / 2, 22), fill=(244, 112, 158, 255), outline=(196, 82, 128, 255))
         else:
             d.polygon([(m + 20, m + 4), (m + sw - 20, m), (m + sw, m + sh / 2), (m + sw - 22, m + sh), (m + 22, m + sh - 3), (m, m + sh / 2)],
                       fill=(70, 50, 72, 235), outline=OUTLINE)
-        baseline = m + sh * (0.68 if self.style == "paper" else 0.7)
+        baseline = m + sh * (0.68 if self.style in ("paper", "candy") else 0.7)
         x0 = m + padl
         dim = Image.new("RGBA", base.size, (0, 0, 0, 0))
         ink = Image.new("RGBA", base.size, (0, 0, 0, 0))
         if self.style == "paper":
             draw_text(ImageDraw.Draw(dim), x0, baseline, ln.text, fname, size, (182, 176, 186))
             draw_text(ImageDraw.Draw(ink), x0, baseline, ln.text, fname, size, (100, 38, 72))
+        elif self.style == "candy":
+            draw_text(ImageDraw.Draw(dim), x0, baseline, ln.text, fname, size, (226, 190, 204))
+            draw_text(ImageDraw.Draw(ink), x0, baseline, ln.text, fname, size, (214, 72, 126))
         else:
             draw_text(ImageDraw.Draw(dim), x0, baseline, ln.text, fname, size, (150, 128, 96))
             draw_text(ImageDraw.Draw(ink), x0, baseline, ln.text, fname, size, (244, 196, 92))
@@ -495,12 +514,14 @@ class Project:
             self.shots = plan(duration, lines, mood, seed)
         self.cover_shot = (story or {}).get("cover")
         first = lines[0].start if lines else 8
-        self.title = TitleCard(title, artist, max(4.5, min(first - 0.8, 9.0)))
+        self.title = TitleCard(title, artist, max(4.5, min(first - 0.8, 9.0)), theme="sweet" if mood == "sweet" else "default")
         self.subs = Subtitles(lines, style, seed)
         self.particles = Particles(seed)
         # evening grade for melancholy: a little cooler/violet, deeper vignette
-        self.grade = (0.96, 0.94, 1.0) if mood == "melancholy" else None
-        self.overlay = paper_overlay(W, H, seed, vignette=0.4 if self.grade else 0.32, tint=self.grade)
+        self.grade = {"melancholy": (0.96, 0.94, 1.0), "sweet": (1.0, 0.975, 0.985)}.get(mood)
+        self.overlay = paper_overlay(W, H, seed, vignette={"melancholy": 0.4, "sweet": 0.18}.get(mood, 0.32), tint=self.grade)
+        # sweet: lift the shadows towards candy pink so nothing reads as dark and heavy
+        self.lift = Image.new("RGB", (W, H), (34, 20, 30)) if mood == "sweet" else None
         self.singing = np.zeros(self.n_frames, bool)
         for ln in lines:
             self.singing[int(ln.start * FPS):int(ln.end * FPS)] = True
@@ -558,12 +579,19 @@ class Project:
             sing = bool(self.singing[min(f, self.n_frames - 1)])
             # crowd extras first, named characters on top of them
             order = sorted(range(len(shot.actors)), key=lambda i: (shot.actors[i].who != "crowd", shot.actors[i].sort_y))
+            # the foreground layer (bench seat, desks…) covers only characters behind it (fg_y); people standing in
+            # front of the bench are drawn after it
+            fg_y = getattr(sc, "fg_y", None)
+            front = [i for i in order if fg_y is not None and shot.actors[i].sort_y % 10000 > fg_y]
             for i in order:
+                if i not in front:
+                    draw_actor(world, shot.actors[i], ctx, f, i, e, pulse, sing)
+            if sc.fg is not None:
+                world.paste(sc.fg, (0, 0), sc.fg)
+            for i in front:
                 draw_actor(world, shot.actors[i], ctx, f, i, e, pulse, sing)
             if shot_fx:
                 fxm.draw(world, shot_fx, ctx, back=False)
-            if sc.fg is not None:
-                world.paste(sc.fg, (0, 0), sc.fg)
             return world
         boil = int(f / 5) % 3
         for ai, a in enumerate(shot.actors if actors else []):
@@ -633,6 +661,8 @@ class Project:
             nxt = self.render_shot(self.shots[i + 1], t, f)
             img = Image.blend(img, nxt, 0.5 - (self.shots[i].end - t) / XFADE)
         img = ImageChops.multiply(img, self.overlay)
+        if self.lift is not None:
+            img = ImageChops.screen(img, self.lift)
         self.title.draw(img, t)
         self.subs.draw(img, t)
         fade = min(1.0, t / 0.8, (self.duration - t) / 2.0)

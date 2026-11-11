@@ -9,7 +9,13 @@ The four `*.mp4` files in the repo root are the style references (README.md sect
    (random scenes from mood pools) for a delivery. Always write a storyboard `input/<name>.story.json` where every
    shot illustrates its lyric line(s): the place, what the characters do, the effects. **Code only**: everything is
    drawn by `mvmaker`. Do not call AI image/video generation services or APIs (the user said so explicitly).
-1. **Style: melancholy.** A sentimental, evening, "posted late at night" feel. This is the default mood (`--mood auto` resolves to `melancholy` unless the song is clearly a happy love song). Don't switch to `sweet` unless the user asks.
+1. **Style: melancholy** by default: a sentimental, evening, "posted late at night" feel (`--mood auto` resolves to `melancholy` unless the song is clearly a happy love song).
+   When the user asks for another look for a song, follow it. "Cute and sweet" (可爱/甜) means
+   `"mood": "sweet"` in the storyboard:
+   * pastel palettes (`time: "pastel"` / `"pastel_night"`, `autumn` streets, `autumn_park`);
+   * candy subtitles, a pink title and lifted shadows;
+   * cute effects (`heart_break`, `dream`, hearts, sparkles).
+   Example: `input/牙牙乐格子兮-秋殇别恋.story.json`, a sad song told cutely.
 2. **Covers**: a 3:4 portrait (1080×1440) and a 4:3 landscape (1440×1080). `make_mv` produces both automatically.
 3. **Title + 文案 in Chinese**: write `output/<name>_文案.md` (format below) **before** rendering, so its 封面短句 is printed on the covers.
 4. Keep README.md and docs/ARCHITECTURE.md accurate whenever the code changes.
@@ -78,8 +84,8 @@ The four `*.mp4` files in the repo root are the style references (README.md sect
 * `mvmaker/make_mv.py` CLI: name guessing, mood guessing, reads 封面短句, writes the .lrc, covers, encode
 * `mvmaker/lyrics.py` LRC parsing, Whisper transcription (with VAD fallback), aligning plain-text lyrics to the transcription
 * `mvmaker/story.py` storyboard mode: shots from `input/<name>.story.json`, extended character acts (walk away, sit, boat, float, sink, umbrella, fade, back view), crowds
-* `mvmaker/sets.py` storyboard scenery (beach, pier, island, underwater, storm sea, cliff, lighthouse, mountains, meadow, snow_town, kitchen + the scenes library) in dusk/night/storm/day palettes
-* `mvmaker/fx.py` animated lyric effects (tide, footprints, sand heart, boat, seagulls, lighthouse beam, lightning, rays, bubbles, seaweed, sinking heart, rising photos, messages, calendar, clock, steam, sunlight, aurora, fireworks, shooting star)
+* `mvmaker/sets.py` storyboard scenery (beach, pier, island, underwater, storm sea, cliff, lighthouse, mountains, meadow, snow_town, kitchen, autumn_park + the scenes library) in dusk/night/storm/day/pastel/pastel_night palettes
+* `mvmaker/fx.py` animated lyric effects (tide, footprints, sand heart, boat, seagulls, lighthouse beam, lightning, rays, bubbles, seaweed, sinking heart, breaking heart, thought bubble, rising photos, messages, calendar, clock, steam, sunlight, summer-to-autumn, aurora, fireworks, shooting star)
 * `mvmaker/scenes.py` background library (one function per scene; `POOLS` = scenes per mood, used only in template mode)
 * `mvmaker/character.py` box characters (expressions, accessories, walk cycle) as cached sprites
 * `mvmaker/render.py` storyboard planning, camera, particles, emotes, title card, karaoke subtitles, parallel encode

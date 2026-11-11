@@ -12,7 +12,7 @@ from PIL import Image, ImageChops, ImageDraw
 from .common import OUTLINE, WH, WW, add_glow, ease, heart_points, star_points
 
 BACK = {"waves", "tide", "footprints", "sand_heart", "boat_far", "seagulls", "rays", "beam", "lightning",
-        "shooting_star", "clock", "aurora", "fireworks", "sunbeam", "calendar", "steam", "sunlight"}
+        "shooting_star", "clock", "aurora", "fireworks", "sunbeam", "calendar", "steam", "sunlight", "autumn_turn"}
 
 
 def _d(img):
@@ -407,6 +407,73 @@ def fx_sunlight(img, p, ctx):
     a = int(55 + 15 * math.sin(t * 1.3))
     d.polygon([(x - 120 + 300, 0), (x + 120 + 300, 0), (x + 260, y), (x - 260, y)], fill=(255, 214, 140, a))
     add_glow(img, x, y - 140, 360, (255, 200, 120), 0.55 + 0.1 * math.sin(t * 1.3))
+
+
+def fx_heart_break(img, p, ctx):
+    """A big cute heart that cracks and splits in two (爱已被时间撕裂)."""
+    lt, D, t = ctx["lt"], ctx["D"], ctx["t"]
+    x, y, size = p.get("x", 1075), p.get("y", 380), p.get("size", 150)
+    k = ease(min(1, max(0, (lt - D * p.get("at", 0.35)) / (D * 0.45))))
+    bob = 10 * math.sin(t * 2)
+    hp = heart_points(0, 0, size, 64)
+    for side in (-1, 1):
+        half = [(px, py) for px, py in hp if px * side >= -2] or hp
+        if k > 0:   # tilt each half away and let it drop a little
+            a = math.radians(18 * k * side)
+            half = [(px * math.cos(a) - py * math.sin(a), px * math.sin(a) + py * math.cos(a)) for px, py in half]
+        pts = [(x + px + side * 70 * k, y + py + bob + 60 * k * k) for px, py in half]
+        d = _d(img)
+        d.polygon(pts, fill=(244, 112, 158, 255))
+        d.line(pts + [pts[0]], fill=(196, 82, 128, 255), width=7, joint="curve")
+        hx = x + side * 70 * k + (-0.45 if side < 0 else 0.15) * size
+        d.ellipse([hx, y - 0.55 * size + bob + 60 * k * k, hx + 0.25 * size, y - 0.35 * size + bob + 60 * k * k], fill=(255, 220, 232, 200))
+    if k > 0:   # little sparkles where it cracked
+        for j in range(5):
+            r = 8 + 10 * (1 - k)
+            sx = x + 30 * math.cos(j * 1.3 + t) * k * 2
+            sy = y + 40 * math.sin(j * 1.9 + t) * k * 2
+            d.polygon(star_points(sx, sy, r, r * 0.35), fill=(255, 240, 200, int(220 * (1 - k * 0.6))))
+
+
+def fx_dream(img, p, ctx):
+    """Thought bubble with someone's smiling face in it (想念你微笑的脸)."""
+    from .character import Look, sprite
+    t, lt = ctx["t"], ctx["lt"]
+    x, y, r = p.get("x", 1350), p.get("y", 420), p.get("r", 190)
+    a = ease(min(1, lt / 0.6))
+    if a <= 0:
+        return
+    bob = 8 * math.sin(t * 1.6)
+    d = _d(img)
+    tail = p.get("from", (x - 260, y + 330))
+    for k, rr in enumerate((16, 26, 38)):
+        f = (k + 1) / 4
+        cx = tail[0] + (x - tail[0]) * f
+        cy = tail[1] + (y - tail[1]) * f + bob
+        d.ellipse([cx - rr, cy - rr, cx + rr, cy + rr], fill=(255, 255, 255, int(235 * a)), outline=(226, 160, 190, int(255 * a)), width=4)
+    for dx, dy, q in ((-0.6, 0.15, 0.55), (0.6, 0.15, 0.55), (0, -0.35, 0.62), (-0.35, -0.2, 0.55), (0.35, -0.2, 0.55), (0, 0.25, 0.7)):
+        rr = r * q
+        d.ellipse([x + dx * r - rr, y + dy * r - rr + bob, x + dx * r + rr, y + dy * r + rr + bob], fill=(255, 255, 255, int(240 * a)))
+    look = Look(p.get("color", "#e59ab0"), p.get("accessory", "flower"))
+    sp, (ax, ay) = sprite(look.key(), p.get("face", "happy"), False, 0, 0, 1 if (t % 2.4) < 1.2 else 0, 0, p.get("s", 12))
+    if a < 1:
+        sp = sp.copy()
+        sp.putalpha(sp.getchannel("A").point(lambda v: int(v * a)))
+    img.paste(sp, (int(x - ax), int(y + 0.45 * r - ay + bob)), sp)
+    for k in range(3):
+        ph = (t * 0.6 + k / 3) % 1
+        d.polygon(heart_points(x + (k - 1) * 90, y - r * 0.7 - ph * 90 + bob, 16), fill=(244, 112, 158, int(220 * (1 - ph) * a)))
+
+
+def fx_autumn_turn(img, p, ctx):
+    """Summer turning into autumn during the shot (时光旋转 夏天瞬间秋天): warm orange wash creeping in."""
+    lt, D = ctx["lt"], ctx["D"]
+    k = ease(min(1, max(0, (lt - D * 0.2) / (D * 0.6))))
+    if k <= 0:
+        return
+    warm = Image.new("RGB", img.size, (246, 160, 92))
+    blended = ImageChops.multiply(img.convert("RGB"), Image.blend(Image.new("RGB", img.size, (255, 255, 255)), warm, 0.5 * k))
+    img.paste(blended)
 
 
 def draw(img, effects, ctx, back):
