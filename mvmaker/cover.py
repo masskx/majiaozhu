@@ -78,9 +78,13 @@ def _strip(text, seed, max_w):
 def make_cover(proj, kind, out_path, tagline=None):
     OW, OH = SIZES[kind]
     portrait = OH > OW
-    shot0 = proj.shots[0]
-    sc = next((s.scene for s in proj.shots if s.scene.name == "dusk_stop"), shot0.scene) \
-        if proj.mood == "melancholy" else shot0.scene
+    if getattr(proj, "cover_shot", None) is not None:   # storyboard picks the cover shot
+        shot0 = proj.shots[proj.cover_shot]
+        sc = shot0.scene
+    else:
+        shot0 = proj.shots[0]
+        sc = next((s.scene for s in proj.shots if s.scene.name == "dusk_stop"), shot0.scene) \
+            if proj.mood == "melancholy" else shot0.scene
     world = proj.render_world(Shot(0, 10, sc, [], shot0.cam), 3.0, 90, actors=False)
 
     # extend the ground downward (stretching the bottom rows) so a tall crop can sit the character higher
@@ -109,7 +113,8 @@ def make_cover(proj, kind, out_path, tagline=None):
     k = OW / cw
 
     # lead character, drawn at cover resolution so it stays crisp
-    look = shot0.actors[0].look if shot0.actors else None
+    leads = [x for x in shot0.actors if getattr(x, "who", "hero") == "hero"] or shot0.actors
+    look = leads[0].look if leads else None
     if look:
         body_px = OW * (0.30 if portrait else 0.19)
         q = max(10, int(round(body_px / 240 * 20 / 1)))

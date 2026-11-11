@@ -29,7 +29,27 @@ Three sources, best first:
 
 Transcription details: faster-whisper `large-v3-turbo` with int8 on the CPU, `language="zh"`, and a prompt that says these are Mandarin song lyrics. The first pass uses the voice-activity filter. If it finds fewer than 25 tokens per minute (common with DJ remixes), it re-runs without the filter. Known hallucinations ("字幕由…", "优优独播剧场…", "Zither Harp" on instrumental intros) are filtered, and traditional characters are converted to simplified with OpenCC.
 
-## 3. Storyboard (`render.plan`)
+## 3a. Storyboard mode (`story.py`, `sets.py`, `fx.py`): what deliveries use
+
+* **Shots**: shot *i* starts 0.35 s before its first lyric line (`lines[k].start - 0.35`), or at `"from"` seconds for instrumentals, and ends where the next shot starts. Shot 0 starts at 0 (the title card plays over it).
+* **Sets** (`sets.build(name, time, seed)`): every set is painted once per run. Sea sets share `sky()` and `sea()`, which take a palette per time of day (`PALETTES`), and expose `horizon`, `shore`, `floor`, `lamp` for the effects. Library scenes from `scenes.py` are available under the same names.
+* **Actors** (`story.SActor`):
+  * position, scale and alpha are interpolated over the shot (`t0`..`t1` fraction);
+  * acts change legs, arms, rotation and bob (boat rocks ±6°, float/sink sway ±9° with bubbles, dance sways and alternates arms);
+  * `back` draws the faceless back view; `umbrella` draws a scalloped umbrella;
+  * crowds are generated grey walkers in two depth rows;
+  * named characters are drawn after the crowd.
+* **Effects** (`fx.draw`): names in `fx.BACK` are drawn behind the characters, the rest in front.
+  * Effects are stateless functions of `t` / `lt`. For example, the tide erases footprints and the sand heart once the highest water line so far has passed them (`_max_edge`).
+  * Lightning is periodic (bolt + screen flash).
+* **Camera** tuples are `(z0, z1, cx0, cx1, cy0[, cy1])`. `pull` starts at 1.3× on the first named character and opens to the full scene; `close` frames the character's face.
+* **Covers** use the storyboard's `"cover"` shot.
+* **Adding vocabulary**:
+  * a new place is a painter in `sets.py` registered in `SETS`;
+  * a new effect is `fx_<name>(img, p, ctx)` in `fx.py` (add the name to `BACK` if it belongs behind the characters);
+  * a new act is a branch in `story.draw_actor`.
+
+## 3b. Template mode (`render.plan`): fallback without a storyboard
 
 * **Cuts**: a cut can fall at a lyric start (0.35 s early) once the shot is ≥ 6.5 s long, randomly before 10 s and always after. Stretches without lyrics longer than 11 s are split evenly. A final shot shorter than 5 s merges into the previous one.
 * **Scene sequence** from `scenes.POOLS[mood] = (openings, middles, flashbacks)`:

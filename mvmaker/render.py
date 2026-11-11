@@ -203,9 +203,24 @@ class Particles:
         self.fly = r.random((32, 5))
 
     def draw(self, img, kind, t):
-        if not kind:
+        if not kind or kind == "none":
             return
         d = ImageDraw.Draw(img, "RGBA")
+        if kind == "storm":   # heavy, wind-driven rain
+            for x0, y0, v, ln in self.rain:
+                v = 2400 + v * 900
+                L = 50 + ln * 60
+                y = (y0 * (H + 200) + v * t) % (H + 200) - 100
+                x = (x0 * (W + 600) - 0.45 * v * t) % (W + 600) - 300
+                d.line([(x, y), (x - 0.45 * L, y + L)], fill=(215, 222, 255, int(90 + 80 * ln)), width=3)
+            return
+        if kind == "sand":    # wind blowing sand sideways
+            for x0, y0, v, ln in self.rain[:120]:
+                v = 900 + v * 700
+                x = (x0 * (W + 300) + v * t) % (W + 300) - 150
+                y = H * 0.35 + y0 * H * 0.65 + 20 * math.sin(t * 3 + x0 * 9)
+                d.line([(x, y), (x + 25 + 40 * ln, y + 3)], fill=(235, 205, 160, int(80 + 90 * ln)), width=2)
+            return
         if kind == "rain":
             for x0, y0, v, ln in self.rain:
                 v = 1700 + v * 900
@@ -465,14 +480,20 @@ class Subtitles:
 
 # ---------------------------------------------------------------- the project / frame renderer
 class Project:
-    def __init__(self, audio, duration, lines, title, artist, mood="sad", style="paper", seed=1):
+    def __init__(self, audio, duration, lines, title, artist, mood="sad", style="paper", seed=1, story=None):
         self.audio, self.duration = audio, duration
         self.n_frames = int(duration * FPS)
         self.energy, self.pulse = audio_features(audio, self.n_frames)
         self.lines = lines
         self.mood, self.seed = mood, seed
         self.title_text, self.artist = title, artist
-        self.shots = plan(duration, lines, mood, seed)
+        self.story = story
+        if story:   # storyboard mode: every shot written for its lyric lines
+            from .story import plan_story
+            self.shots = plan_story(story, lines, duration, seed)
+        else:       # template mode: scenes picked from mood pools
+            self.shots = plan(duration, lines, mood, seed)
+        self.cover_shot = (story or {}).get("cover")
         first = lines[0].start if lines else 8
         self.title = TitleCard(title, artist, max(4.5, min(first - 0.8, 9.0)))
         self.subs = Subtitles(lines, style, seed)
@@ -486,8 +507,10 @@ class Project:
 
     def describe(self):
         for s in self.shots:
-            acts = s.framing + ": " + ", ".join(f"{a.expr}{'/' + a.emote if a.emote else ''}" for a in s.actors)
-            print(f"  {s.start:6.1f}-{s.end:6.1f}s  {s.scene.name:<11} {acts}", file=sys.stderr)
+            acts = s.framing + ": " + ", ".join(f"{a.expr}{'/' + a.emote if a.emote else ''}" for a in s.actors
+                                                if getattr(a, "who", "hero") != "crowd")
+            note = getattr(s, "note", "")
+            print(f"  {s.start:6.1f}-{s.end:6.1f}s  {s.scene.name:<11} {acts}  {note}", file=sys.stderr)
 
     def shot_at(self, t):
         for i, s in enumerate(self.shots):
@@ -524,6 +547,24 @@ class Project:
                 r = s * (1.0 + 1.6 * b)
                 d.polygon(star_points(x, y, r * 2.2, r * 0.5), fill=(255, 255, 240, int(90 + 150 * b)))
 
+        shot_fx = getattr(shot, "fx", None)
+        ctx = {"sc": sc, "t": t, "lt": lt, "D": D, "seed": self.seed + int(shot.start * 10)}
+        if shot_fx:
+            from . import fx as fxm
+            fxm.draw(world, shot_fx, ctx, back=True)
+        if getattr(shot, "note", None) is not None and actors:   # storyboard actors
+            from .story import draw_actor
+            e = float(self.energy[min((f // 3) * 3, self.n_frames - 1)])
+            sing = bool(self.singing[min(f, self.n_frames - 1)])
+            # crowd extras first, named characters on top of them
+            order = sorted(range(len(shot.actors)), key=lambda i: (shot.actors[i].who != "crowd", shot.actors[i].sort_y))
+            for i in order:
+                draw_actor(world, shot.actors[i], ctx, f, i, e, pulse, sing)
+            if shot_fx:
+                fxm.draw(world, shot_fx, ctx, back=False)
+            if sc.fg is not None:
+                world.paste(sc.fg, (0, 0), sc.fg)
+            return world
         boil = int(f / 5) % 3
         for ai, a in enumerate(shot.actors if actors else []):
             s = a.scale / 20.0
@@ -567,15 +608,17 @@ class Project:
         sc = shot.scene
         lt = t - shot.start
         D = max(0.1, shot.end - shot.start)
-        z0, z1, cx0, cx1, cy = shot.cam
+        z0, z1, cx0, cx1, cy0, *rest = shot.cam
+        cy1 = rest[0] if rest else cy0
         p = ease(min(1.0, max(0.0, lt / D)))
         z = z0 + (z1 - z0) * p
         cx = cx0 + (cx1 - cx0) * p
+        cy = cy0 + (cy1 - cy0) * p
         cw, ch = W / z, H / z
         cx = min(max(cx, cw / 2), WW - cw / 2)
         cy = min(max(cy, ch / 2), WH - ch / 2)
         view = world.resize((W, H), Image.BILINEAR, box=(cx - cw / 2, cy - ch / 2, cx + cw / 2, cy + ch / 2))
-        self.particles.draw(view, sc.particles, t)
+        self.particles.draw(view, getattr(shot, "weather", sc.particles), t)
         return view
 
     def render(self, f):

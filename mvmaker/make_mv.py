@@ -83,6 +83,7 @@ def main(argv=None):
     ap.add_argument("--start", type=float, default=0.0, help="render from this second (preview)")
     ap.add_argument("--length", type=float, default=None, help="render only this many seconds (preview)")
     ap.add_argument("--stills", help="comma separated seconds: save PNG frames instead of a video")
+    ap.add_argument("--story", help="storyboard JSON (default: input/<name>.story.json if it exists)")
     ap.add_argument("--tagline", help="short line for the covers; '/' = line break (default: 封面短句 in <name>_文案.md)")
     ap.add_argument("--covers-only", action="store_true", help="only make the 3:4 and 4:3 covers")
     ap.add_argument("--no-covers", action="store_true")
@@ -112,7 +113,17 @@ def main(argv=None):
         write_lrc(lines, lrc, title, artist)
         print(f"> wrote the timed lyrics to {lrc} - fix any wrong words there and re-run with --lyrics {lrc}", file=sys.stderr)
 
-    proj = Project(a.audio, duration, lines, title, artist, mood=mood, style=a.style, seed=seed)
+    story = None
+    story_path = a.story or os.path.join(os.path.dirname(os.path.abspath(a.audio)), stem + ".story.json")
+    if os.path.exists(story_path):
+        from mvmaker.story import load
+        story = load(story_path)
+        print(f"> storyboard: {story_path} ({len(story['shots'])} shots)", file=sys.stderr)
+    elif a.story:
+        sys.exit(f"storyboard not found: {a.story}")
+    else:
+        print("! no storyboard found: using template scenes (write input/<name>.story.json for lyric-matched shots)", file=sys.stderr)
+    proj = Project(a.audio, duration, lines, title, artist, mood=mood, style=a.style, seed=seed, story=story)
     proj.describe()
     base = os.path.splitext(out)[0]
     tagline = a.tagline or read_copy(base + "_文案.md")

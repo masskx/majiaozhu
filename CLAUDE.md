@@ -5,6 +5,10 @@ The four `*.mp4` files in the repo root are the style references (README.md sect
 
 ## The user's standing requirements (apply to every MP3 they send)
 
+0. **Visuals must match the lyrics, in the style of the four reference videos.** Never use the template mode
+   (random scenes from mood pools) for a delivery. Always write a storyboard `input/<name>.story.json` where every
+   shot illustrates its lyric line(s): the place, what the characters do, the effects. **Code only**: everything is
+   drawn by `mvmaker`. Do not call AI image/video generation services or APIs (the user said so explicitly).
 1. **Style: melancholy.** A sentimental, evening, "posted late at night" feel. This is the default mood (`--mood auto` resolves to `melancholy` unless the song is clearly a happy love song). Don't switch to `sweet` unless the user asks.
 2. **Covers**: a 3:4 portrait (1080×1440) and a 4:3 landscape (1440×1080). `make_mv` produces both automatically.
 3. **Title + 文案 in Chinese**: write `output/<name>_文案.md` (format below) **before** rendering, so its 封面短句 is printed on the covers.
@@ -27,7 +31,20 @@ The four `*.mp4` files in the repo root are the style references (README.md sect
    python3 -m mvmaker.make_mv "input/<name>.mp3" --lyrics "input/<name>.txt" --stills 3,30,60,90,120
    ```
    Look at the PNGs and read `output/<name>.lrc`. Fix misheard words in the .lrc (if unsure, keep what was heard and tell the user which lines are uncertain). If the transcription found almost no lines, check the log for the no-VAD retry.
-5. **Write `output/<name>_文案.md`** in Chinese, melancholy/evening tone, in this format:
+5. **Write the storyboard `input/<name>.story.json`** (format: docstring of `mvmaker/story.py`; example:
+   `input/洋澜一-伤心太平洋.story.json`). Get the line indexes from the .lrc (0-based, in order). Rules of thumb:
+   * one shot per 1–2 lyric lines (≈3–8 s); instrumental passages get `"from": seconds` shots (≤ 12 s each);
+   * read each line for its literal images (sea, island, boat, rain, crowd, bed, clock, heart…) and its feeling.
+     Pick the set and the act that show it: a lone character on an island for 「一个岛锁住一个人」, the partner
+     walking away and fading for a goodbye, sinking underwater for 「沉入海」, memory photos rising for 「往事浮上来」;
+   * repeated choruses reuse their imagery with a different camera, time of day or expression (like the references);
+   * keep characters above the subtitle strip: feet/seat y ≤ ~990 on sets whose ground is lower;
+   * the hero is the singer's "I"; the partner (pink, flower) is "you". Use `back: true` for looking away or waiting;
+   * if a line needs a place, prop or effect that doesn't exist, add it in code (`sets.py`, `fx.py`, `story.py`) in
+     the same flat, outlined, paper-textured style, and document it in README/ARCHITECTURE;
+   * set `"cover"` to the shot index that best sums up the song.
+   Check stills of many shots (`--stills` with one time per shot) and fix framing before the full render.
+6. **Write `output/<name>_文案.md`** in Chinese, melancholy/evening tone, in this format:
    ```markdown
    # 歌名 · 歌手 发布文案
 
@@ -45,22 +62,25 @@ The four `*.mp4` files in the repo root are the style references (README.md sect
    #歌名 #歌手 #深夜emo #伤感音乐 #歌词动画 #晚安
    ```
    Don't invent factual claims about real people. Stay with feelings, or with a song's well-known story.
-6. **Render the full video + covers** (about 5 min for a 4-min song). Run it in the background and wait for the notification:
+7. **Render the full video + covers** (about 5 min for a 4-min song). Run it in the background and wait for the notification:
    ```bash
    python3 -m mvmaker.make_mv "input/<name>.mp3" --lyrics "output/<name>.lrc"
    ```
    Covers only (e.g. after editing the 封面短句): add `--covers-only`.
-7. **Check.** Run `ffprobe` (1920x1080, 30 fps, duration equal to the song). Look at a contact sheet (`ffmpeg -vf "fps=1/7,scale=320:-1,tile=6x6"`) and at both covers.
-8. **Deliver.**
+8. **Check.** Run `ffprobe` (1920x1080, 30 fps, duration equal to the song). Look at a contact sheet (`ffmpeg -vf "fps=1/7,scale=320:-1,tile=6x6"`) and at both covers.
+9. **Deliver.**
    * Send the MP4 and both cover JPGs with SendUserFile.
    * Show the 发布标题, 备选标题 and 文案 in the reply, ready to copy.
-   * Commit `input/<name>.*` and `output/<name>*` (`.mp4`, `.lrc`, `_cover_3x4.jpg`, `_cover_4x3.jpg`, `_文案.md`) and push.
+   * Commit `input/<name>.*` (mp3, txt/lrc, story.json) and `output/<name>*` (`.mp4`, `.lrc`, `_cover_3x4.jpg`, `_cover_4x3.jpg`, `_文案.md`) and push.
    * Tell the user the mood and seed used, any uncertain lyric lines, and how to ask for changes (another seed, `--mood sad`, `--style banner`, corrected lyrics, a different cover line).
 
 ## Code map
 * `mvmaker/make_mv.py` CLI: name guessing, mood guessing, reads 封面短句, writes the .lrc, covers, encode
 * `mvmaker/lyrics.py` LRC parsing, Whisper transcription (with VAD fallback), aligning plain-text lyrics to the transcription
-* `mvmaker/scenes.py` background library (one function per scene; `POOLS` = scenes per mood)
+* `mvmaker/story.py` storyboard mode: shots from `input/<name>.story.json`, extended character acts (walk away, sit, boat, float, sink, umbrella, fade, back view), crowds
+* `mvmaker/sets.py` storyboard scenery (beach, pier, island, underwater, storm sea, cliff, lighthouse + the scenes library) in dusk/night/storm/day palettes
+* `mvmaker/fx.py` animated lyric effects (tide, footprints, sand heart, boat, seagulls, lighthouse beam, lightning, rays, bubbles, seaweed, sinking heart, rising photos, clock, aurora, fireworks, shooting star)
+* `mvmaker/scenes.py` background library (one function per scene; `POOLS` = scenes per mood, used only in template mode)
 * `mvmaker/character.py` box characters (expressions, accessories, walk cycle) as cached sprites
 * `mvmaker/render.py` storyboard planning, camera, particles, emotes, title card, karaoke subtitles, parallel encode
 * `mvmaker/cover.py` 3:4 and 4:3 covers

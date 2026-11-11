@@ -30,7 +30,10 @@ majiaozhu/
 │   ├── make_mv.py          command line entry point
 │   ├── lyrics.py           lyric sources: LRC / text alignment / Whisper
 │   ├── render.py           storyboard, animation, compositing, encoding
-│   ├── scenes.py           background library + mood pools
+│   ├── story.py            storyboard mode: lyric-matched shots, character acts, crowds
+│   ├── sets.py             storyboard scenery (sea, island, pier, underwater, storm…)
+│   ├── fx.py               animated lyric effects (tide, boat, beam, lightning, bubbles…)
+│   ├── scenes.py           background library + mood pools (template mode)
 │   ├── character.py        box characters (sprites)
 │   ├── cover.py            3:4 and 4:3 covers
 │   ├── common.py           canvas, fonts, glow, paper texture helpers
@@ -92,8 +95,10 @@ majiaozhu/
 | Title / singer | taken from the MP3 tags, otherwise from the file name (`歌手-歌名.mp3`). Override with `--title` / `--artist`. |
 | Lyrics + timing | `--lyrics x.lrc` uses its timings directly. `--lyrics x.txt` (plain lines) gets aligned to the vocals automatically. With no lyrics, the song is transcribed with Whisper. If the voice detector misses the vocals (DJ remixes, heavy beats), it retries without it. A `.lrc` file is always written so you can fix wrong words and re-run. |
 | Mood | `melancholy` (default), `sad` or `sweet`. Only clearly happy love songs switch to `sweet` automatically. The mood picks the scene pool, the faces and the colour grade. |
-| Storyboard | about 6–11 s shots cut where lyric lines start. Medium, close-up and wide framings. A few warm "memory" shots (park bench, classroom) are placed in the middle. Melancholy runs from dusk into night. |
-| Scenes | sunset bus stop, rainy street, night city, bedroom with desk lamp, snowy moonlit lake, neon bar, rooftop with string lights, park bench at sunset, pastel school street, classroom. All are drawn in code in the flat, outlined style. |
+| Storyboard (lyric-matched) | `input/<name>.story.json` describes **one shot per 1–2 lyric lines**: where it happens, what the characters do, which effects play. 「一个岛锁住一个人」 is a lone character on a tiny island with the camera pulling out; 「我等的船还不来」 is sitting at the end of a pier while a boat sails away; 「寂寞默默沉没沉入海」 is sinking underwater; 「往事浮上来」 is memory photos floating up. Claude writes it for every song (see "Storyboards" below). Without one, a fallback template mode picks scenes by mood. |
+| Scenes | sea and storyboard sets in dusk/night/storm/day palettes: beach, pier, island, underwater, storm at sea, cliff, lighthouse. Plus the earlier library: sunset bus stop, rainy street, night city, bedroom, snowy lake, neon bar, rooftop, park bench, school street, classroom. All drawn in code in the flat, outlined, paper-textured style. |
+| Character acts | stand, walk (including walking away into the distance), sit, back view, holding an umbrella, rocking in a boat, floating, sinking, dancing, fading away. A crowd of grey umbrella-carrying passers-by. Emotes: rain cloud, hearts, notes, sparkles. |
+| Lyric effects | tide that washes away footprints and a heart drawn in the sand, waves, storm swell, lightning, a boat passing on the horizon, seagulls, lighthouse beam, light rays, bubbles, seaweed, a cracked heart sinking, memory photos rising, a fast-spinning clock, shooting stars, aurora, fireworks. |
 | Motion | walk cycles, blinking, bobbing to the music's energy, the lead "singing" (mouth follows vocal loudness), hand-drawn line boil, camera push-ins and pans, crossfades, rain, snow, petals, dust, fireflies, flickering lamps and neon. |
 | Text | brush-lettered title card with an animated underline. Notebook-paper karaoke subtitles (`--style paper`, default) or gold-on-dark tags (`--style banner`). |
 | Covers | the opening scene re-framed for 3:4 and 4:3, the lead character drawn sharply at cover size, title + singer, and the 封面短句 on paper strips. |
@@ -152,7 +157,9 @@ flowchart LR
     CLI --> L[lyrics.py<br/>LRC parse · Whisper · text alignment]
     L -->|timed lines| P[render.Project]
     MP3 -->|loudness envelope| P
-    P --> PLAN["plan()<br/>cuts · scenes · actors · camera"]
+    STORY[input/*.story.json<br/>one shot per lyric line] --> PLAN
+    P --> PLAN["story.plan_story()<br/>(template: plan())<br/>shots · sets · actors · fx · camera"]
+    PLAN --> FX[fx.py<br/>tide · boat · beam · bubbles…]
     PLAN --> SC[scenes.py<br/>painted backgrounds]
     PLAN --> CH[character.py<br/>cached sprites]
     P --> FR["render(frame)<br/>world → camera → grade → text"]
@@ -189,9 +196,30 @@ More detail (planning rules, caching, performance, how to add scenes or characte
 
 ---
 
+### Storyboards
+
+Each song gets `input/<歌手-歌名>.story.json`. It's plain data: a list of shots, each tied to lyric line indexes (from the `.lrc`):
+
+```json
+{"lines": [18], "note": "一个岛锁住一个人",
+ "set": "island", "time": "night",
+ "cast": [{"who": "hero", "x": 990, "y": 866, "act": "sit", "s": 13, "back": true}],
+ "fx": ["waves"], "cam": "pull"}
+```
+
+* `set` + `time` (dusk/night/storm/day) pick the scenery;
+* `cast` places the hero ("I") and the partner ("you"), or a `crowd`, with an act, face and movement (`x→x1`, `y→y1`, scale `s→s1`, `fade`);
+* `fx` lists animated effects with their parameters;
+* `cam` is push, pull, pan_left, pan_right, close or static;
+* `"from": seconds` makes instrumental shots.
+
+The full field list is in the `mvmaker/story.py` docstring. The first complete example is `input/洋澜一-伤心太平洋.story.json` (48 shots).
+
+---
+
 ## 4. Limits compared with the hand-made originals
 
-* Scenes come from a fixed library and are chosen by mood, so they don't illustrate each lyric's specific objects (for example 等你下课's letters). New scenes are easy to add; each one is a single function in `mvmaker/scenes.py`.
+* Everything is drawn by code (no AI image generation), so shots are built from the sets, props, acts and effects that exist. A lyric that needs something new (a train, a letter, a wedding…) means adding it to `sets.py` / `fx.py` first; each is a small function.
 * Whisper gets most words right, but not all. Supplying the lyrics as `.txt` or `.lrc` gives exact text.
 
 Fonts: Ma Shan Zheng and Long Cang (SIL Open Font License, `mvmaker/fonts/OFL.txt`).
