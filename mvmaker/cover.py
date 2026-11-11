@@ -87,11 +87,12 @@ def make_cover(proj, kind, out_path, tagline=None):
             if proj.mood == "melancholy" else shot0.scene
     world = proj.render_world(Shot(0, 10, sc, [], shot0.cam), 3.0, 90, actors=False)
 
-    # extend the ground downward (stretching the bottom rows) so a tall crop can sit the character higher
+    # extend the ground downward so a tall crop can sit the character higher
     EXT = 360
     tall = Image.new("RGB", (WW, WH + EXT))
     tall.paste(world, (0, 0))
-    tall.paste(world.crop((0, WH - 30, WW, WH)).resize((WW, EXT + 10)), (0, WH - 10))
+    # mirror the bottom band downward (stretching smeared textured ground like flowers into streaks)
+    tall.paste(world.crop((0, WH - EXT, WW, WH)).transpose(Image.FLIP_TOP_BOTTOM), (0, WH))
     world, WHX = tall, WH + EXT
     fg_src = None
     if sc.fg is not None:
@@ -118,7 +119,8 @@ def make_cover(proj, kind, out_path, tagline=None):
     if look:
         body_px = OW * (0.30 if portrait else 0.19)
         q = max(10, int(round(body_px / 240 * 20 / 1)))
-        expr = "sad" if proj.mood in ("melancholy", "sad") else "happy"
+        expr = (getattr(proj, "story", None) or {}).get("cover_face") or \
+            ("sad" if proj.mood in ("melancholy", "sad") else "happy")
         sp, (ax, ay) = sprite(look.key(), expr, False, 0, 0, 0, 0, q, sc.tint)
         fx_px, fy_px = (hero_x - x0) * k, (sc.ground - y0) * k
         img.paste(sp, (int(fx_px - ax), int(fy_px - ay)), sp)

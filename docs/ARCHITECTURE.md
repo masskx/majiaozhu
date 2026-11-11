@@ -27,7 +27,7 @@ Three sources, best first:
    * a token that lands more than 2.5 s from its neighbour in the same line is a false match and is pulled back next to it.
 3. **Transcription only**: `lines_from_stream` cuts lines at punctuation, at pauses over 0.9 s, and at 14 characters (splitting at the largest pause near the middle). 1–2 character fragments are glued to the next line (usually a pickup syllable), otherwise to the previous one.
 
-Transcription details: faster-whisper `large-v3-turbo` with int8 on the CPU, `language="zh"`, and a prompt that says these are Mandarin song lyrics. The first pass uses the voice-activity filter. If it finds fewer than 25 tokens per minute (common with DJ remixes), it re-runs without the filter. Known hallucinations ("字幕由…", "优优独播剧场…", "Zither Harp" on instrumental intros) are filtered, and traditional characters are converted to simplified with OpenCC.
+Transcription details: faster-whisper `large-v3-turbo` with int8 on the CPU, `language="zh"`, and a prompt that says these are Mandarin song lyrics. The first pass uses the voice-activity filter. If it finds fewer than 25 tokens per minute, or its tokens span less than 60% of the song (DJ remixes, live recordings with band and applause), it re-runs without the filter. Known hallucinations ("字幕由…", "优优独播剧场…", "Zither Harp" on instrumental intros) are filtered, and traditional characters are converted to simplified with OpenCC.
 
 ## 3a. Storyboard mode (`story.py`, `sets.py`, `fx.py`): what deliveries use
 
@@ -36,7 +36,9 @@ Transcription details: faster-whisper `large-v3-turbo` with int8 on the CPU, `la
 * **Actors** (`story.SActor`):
   * position, scale and alpha are interpolated over the shot (`t0`..`t1` fraction);
   * acts change legs, arms, rotation and bob (boat rocks ±6°, float/sink sway ±9° with bubbles, dance sways and alternates arms);
-  * `back` draws the faceless back view; `umbrella` draws a scalloped umbrella;
+  * `back` draws the faceless back view; `umbrella` draws a scalloped umbrella (`umbrella_dx` shifts it over someone else);
+  * `look` overrides colour/accessory per shot (white `hair` = old age); `scarf` and `phone` draw props on the body;
+  * `hull` sizes the boat (0 = sitting in someone else's boat); `z` lifts a character above others;
   * crowds are generated grey walkers in two depth rows;
   * named characters are drawn after the crowd.
 * **Effects** (`fx.draw`): names in `fx.BACK` are drawn behind the characters, the rest in front.
@@ -83,7 +85,7 @@ Transcription details: faster-whisper `large-v3-turbo` with int8 on the CPU, `la
 
 ## 5. Covers (`cover.py`)
 
-1. Pick the scene: `dusk_stop` for melancholy, otherwise the opening scene. Render its world without characters, then extend the ground 360 px downward (stretching the clean bottom rows) so a tall crop can sit the character higher.
+1. Pick the scene: `dusk_stop` for melancholy, otherwise the opening scene. Render its world without characters, then extend the ground 360 px downward (a mirrored copy of the bottom band) so a tall crop can sit the character higher.
 2. Crop to the aspect ratio. In 3:4 the lead is centred with the ground at 66% height. In 4:3 the lead sits at 70% across and the text goes on the left.
 3. Draw the lead sprite at cover resolution (sharp, not upscaled) with a `sad` face for melancholy/sad songs.
 4. Apply the paper overlay and grade, then darken the top (3:4) or left (4:3) so the text reads.

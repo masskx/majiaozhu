@@ -213,6 +213,138 @@ def lighthouse(seed, time="night"):
                   stars=stars[::4], lamp=(lx, top + 35))
 
 
+def mountains(seed, time="dusk"):
+    """Layered mountains with a river winding through: 跨越山河."""
+    rng = random.Random(seed)
+    c = Canvas(WW, WH, seed=seed)
+    horizon = 640
+    stars = sky(c, rng, time, horizon)
+    _sun(c, time, 1550, 600)
+    base = _pal(time)[2]
+    for k, (y0, amp, dark) in enumerate(((560, 170, 0.55), (650, 140, 0.45), (760, 110, 0.35))):
+        col = mix(_pal(time)[1], (30, 26, 50), dark + 0.15 * k)
+        pts = [(-20, WH)]
+        x = -20
+        while x < WW + 40:
+            pts.append((x, y0 - amp * abs(math.sin(x / (260 + 60 * k) + k * 1.7)) - rng.uniform(0, 30)))
+            x += 70
+        pts.append((WW + 20, WH))
+        c.poly(pts, fill=col, width=5, wob=1.5)
+    river = mix(_pal(time)[3], (255, 255, 255), 0.2)
+    left = [(1000 + 30 * math.sin(y / 60) + (y - 700) * (y - 700) / 900, y) for y in range(700, WH + 40, 30)]
+    right = [(x + 30 + (y - 700) * 0.9, y) for x, y in left]
+    c.poly(left + right[::-1], fill=river, width=4, wob=1)
+    grass = mix(_pal(time)[1], (60, 90, 60), 0.55)
+    pts = [(-20, 930)] + [(x, 930 + 25 * math.sin(x / 300)) for x in range(0, 860, 60)] + [(960, 1010), (1040, WH + 20), (-20, WH + 20)]
+    c.poly(pts, fill=grass, width=5, wob=1)
+    pts = [(1380, WH + 20), (1470, 1000)] + [(x, 950 + 20 * math.sin(x / 260)) for x in range(1560, WW + 80, 60)] + [(WW + 20, WH + 20)]
+    c.poly(pts, fill=grass, width=5, wob=1)
+    return _scene("mountains", c, ground=985, slots=[450, 1750, 600], time=time, horizon=horizon, stars=stars[::4])
+
+
+def meadow(seed, time="day"):
+    """Spring field with blossom trees and flowers: 人间四月天."""
+    rng = random.Random(seed)
+    c = Canvas(WW, WH, seed=seed)
+    horizon = 700
+    stars = sky(c, rng, time, horizon)
+    _sun(c, time, 1700, 640)
+    if time == "day":
+        c.glow(1700, 160, 380, (255, 250, 220), 0.9)
+    hill = mix(_pal(time)[1], (110, 150, 100), 0.6)
+    c.poly([(-20, 720), (500, 640), (1000, 690), (1500, 630), (WW + 20, 690), (WW + 20, 800), (-20, 800)], fill=darker(hill, 0.9), width=5, wob=2)
+    field = mix(_pal(time)[1], (130, 175, 105), 0.65)
+    c.vgrad(0, 760, WW, WH, field, darker(field, 0.8))
+    c.line([(-20, 762), (WW + 20, 760)], width=5)
+    for x in (260, 1880):
+        tree(c, rng, x, 800, 260, C("#f0b7c4"), r=190)
+    for _ in range(420):
+        x, y = rng.uniform(0, WW), rng.uniform(780, WH)
+        r = 3 + (y - 780) / 70
+        col = rng.choice([(255, 236, 160), (255, 190, 210), (255, 255, 255), (200, 180, 255)])
+        c.ellipse(x, y, r, r, fill=col, outline=None, wob=0, n=10)
+    return _scene("meadow", c, ground=985, slots=[900, 1200, 1075], time=time, horizon=horizon, stars=stars[::4])
+
+
+def snow_town(seed, time="night"):
+    """Snowy northern street: little houses with snowy roofs and warm windows."""
+    rng = random.Random(seed)
+    c = Canvas(WW, WH, seed=seed)
+    horizon = 900
+    stars = sky(c, rng, time, horizon)
+    glows = []
+    x = -60
+    k = 0
+    while x < WW + 40:
+        w = rng.uniform(300, 420)
+        h = rng.uniform(260, 380)
+        col = [C("#8a5a54"), C("#5f6f8f"), C("#9c7a58"), C("#6d5a7e")][k % 4]
+        top = 880 - h
+        c.rect(x, top, x + w, 900, fill=col, width=6, wob=1)
+        c.poly([(x - 30, top + 10), (x + w / 2, top - 150), (x + w + 30, top + 10)], fill=darker(col, 0.7), width=6, wob=1)
+        c.poly([(x - 34, top + 14), (x + w / 2, top - 156), (x + w + 34, top + 14), (x + w + 10, top + 30), (x + w / 2, top - 120), (x - 10, top + 30)],
+               fill=C("#f2f5fb"), width=5, wob=1.5)
+        for wx in (x + w * 0.25, x + w * 0.65):
+            lit = rng.random() < 0.75
+            c.rect(wx - 34, top + 70, wx + 34, top + 150, fill=C("#f6c66e") if lit else C("#2c3352"), width=5)
+            c.line([(wx, top + 70), (wx, top + 150)], width=3)
+            if lit:
+                c.glow(wx, top + 110, 120, (255, 190, 100), 0.5)
+        if k % 2 == 0:
+            c.rect(x + w * 0.42, top + 190, x + w * 0.58, 900, fill=darker(col, 0.6), width=5)
+        x += w + rng.uniform(10, 50)
+        k += 1
+    c.rect(-20, 895, WW + 20, WH + 20, fill=C("#e2e8f4"), width=6)
+    c.vgrad(0, 1000, WW, WH, C("#e2e8f4"), C("#c4cde2"))
+    for lx in (720, 1560):
+        c.rect(lx - 8, 560, lx + 8, 960, fill=C("#2d2f48"), width=4)
+        c.poly([(lx - 40, 560), (lx + 40, 560), (lx + 26, 532), (lx - 26, 532)], fill=C("#2d2f48"), width=4)
+        c.ellipse(lx, 527, 30, 10, fill=C("#f2f5fb"), width=3)
+        glows.append((lx, 575, 260, (255, 200, 120), 0.8 if time != "day" else 0.2, "lamp"))
+    return _scene("snow_town", c, ground=990, slots=[930, 1230, 1075], time=time, horizon=horizon, stars=stars[::4], glows=glows)
+
+
+def kitchen(seed, time="night"):
+    """Small warm kitchen: 柴米油盐."""
+    rng = random.Random(seed)
+    c = Canvas(WW, WH, seed=seed)
+    wall = C("#e8cfa6") if time == "day" else C("#b98f78")
+    c.vgrad(0, 0, WW, 760, wall, darker(wall, 0.9))
+    for x in range(0, WW, 60):
+        for y in range(330, 760, 60):
+            c.rect(x, y, x + 58, y + 58, fill=mix(wall, (255, 255, 255), 0.25 if (x // 60 + y // 60) % 2 else 0.15), outline=darker(wall, 0.85), width=2, wob=0)
+    wx0, wy0, wx1, wy1 = 760, 90, 1300, 470
+    c.vgrad(wx0, wy0, wx1, wy1, C("#1d2550") if time != "day" else C("#a9d0e6"), C("#3a3f78") if time != "day" else C("#e8f1ee"))
+    if time != "day":
+        moon(c, 1180, 180, 34)
+    c.rect(wx0, wy0, wx1, wy1, fill=None, width=14)
+    c.line([((wx0 + wx1) / 2, wy0), ((wx0 + wx1) / 2, wy1)], width=8)
+    c.rect(wx0 - 30, wy1, wx1 + 30, wy1 + 22, fill=C("#f2ebdc"), width=5)
+    c.ellipse(900, wy1 - 30, 40, 30, fill=C("#5a9a6a"), width=4)      # potted plant
+    c.rect(870, wy1 - 20, 930, wy1, fill=C("#c26a4e"), width=4)
+    c.rect(-20, 760, WW + 20, 790, fill=C("#d9d2c4"), width=6)       # counter top
+    c.rect(-20, 790, WW + 20, 1000, fill=C("#7a9a8f"), width=6)       # cabinets
+    for x in range(0, WW, 240):
+        c.rect(x + 14, 810, x + 226, 985, fill=C("#86a89c"), width=4)
+        c.ellipse(x + 200, 900, 7, 7, fill=C("#e8e2d0"), width=2)
+    c.rect(1250, 730, 1520, 762, fill=C("#3a3a48"), width=5)        # stove + pot
+    c.rect(1300, 640, 1470, 735, fill=C("#d8574c"), width=6)
+    c.rect(1280, 630, 1490, 652, fill=C("#b8463d"), width=5)
+    c.ellipse(1385, 618, 20, 10, fill=C("#3a3a48"), width=3)
+    for i, col in enumerate(("#e8c46a", "#e0e0e0", "#c97c5d", "#9fc38a")):    # jars on a shelf
+        c.rect(260 + i * 90, 560, 330 + i * 90, 660, fill=C(col), width=4)
+    c.rect(220, 660, 640, 676, fill=C("#7a5a40"), width=4)
+    for i in range(4):                                                    # hanging utensils
+        x = 1650 + i * 90
+        c.line([(x, 360), (x, 520)], width=5)
+        c.ellipse(x, 540, 26, 30 if i % 2 else 18, fill=C("#9a9aa8"), width=4)
+    c.rect(-20, 1000, WW + 20, WH + 20, fill=C("#d6b98e"), width=6)
+    for x in range(-20, WW, 120):
+        c.line([(x, 1000), (x - 40, WH)], fill=C("#c4a67c"), width=3)
+    glows = [(1030, 280, 500, (255, 210, 150), 0.5 if time != "day" else 0.2, "breath")]
+    return _scene("kitchen", c, ground=1000, slots=[930, 1230, 1075], time=time, glows=glows, pot=(1385, 600))
+
+
 def from_library(name):
     def make(seed, time=None):
         return scn.build(name, seed)
@@ -221,7 +353,8 @@ def from_library(name):
 
 SETS = {
     "beach": beach, "pier": pier, "island": island, "underwater": underwater, "storm_sea": storm_sea,
-    "cliff": cliff, "lighthouse": lighthouse,
+    "cliff": cliff, "lighthouse": lighthouse, "mountains": mountains, "meadow": meadow, "snow_town": snow_town,
+    "kitchen": kitchen,
     # the earlier library (fixed time of day)
     "city_rain": from_library("city_rain"), "city_night": from_library("city_night"), "bedroom": from_library("bedroom"),
     "park": from_library("park"), "snow_lake": from_library("snow_lake"), "bar": from_library("bar"),

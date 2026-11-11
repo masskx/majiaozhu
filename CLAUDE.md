@@ -31,8 +31,8 @@ The four `*.mp4` files in the repo root are the style references (README.md sect
    python3 -m mvmaker.make_mv "input/<name>.mp3" --lyrics "input/<name>.txt" --stills 3,30,60,90,120
    ```
    Look at the PNGs and read `output/<name>.lrc`. Fix misheard words in the .lrc (if unsure, keep what was heard and tell the user which lines are uncertain). If the transcription found almost no lines, check the log for the no-VAD retry.
-5. **Write the storyboard `input/<name>.story.json`** (format: docstring of `mvmaker/story.py`; example:
-   `input/洋澜一-伤心太平洋.story.json`). Get the line indexes from the .lrc (0-based, in order). Rules of thumb:
+5. **Write the storyboard `input/<name>.story.json`** (format: docstring of `mvmaker/story.py`; examples:
+   `input/洋澜一-伤心太平洋.story.json`, `input/解忧邵帅-你是人间四月天.story.json`). Get the line indexes from the .lrc (0-based, in order). Rules of thumb:
    * one shot per 1–2 lyric lines (≈3–8 s); instrumental passages get `"from": seconds` shots (≤ 12 s each);
    * read each line for its literal images (sea, island, boat, rain, crowd, bed, clock, heart…) and its feeling.
      Pick the set and the act that show it: a lone character on an island for 「一个岛锁住一个人」, the partner
@@ -78,8 +78,8 @@ The four `*.mp4` files in the repo root are the style references (README.md sect
 * `mvmaker/make_mv.py` CLI: name guessing, mood guessing, reads 封面短句, writes the .lrc, covers, encode
 * `mvmaker/lyrics.py` LRC parsing, Whisper transcription (with VAD fallback), aligning plain-text lyrics to the transcription
 * `mvmaker/story.py` storyboard mode: shots from `input/<name>.story.json`, extended character acts (walk away, sit, boat, float, sink, umbrella, fade, back view), crowds
-* `mvmaker/sets.py` storyboard scenery (beach, pier, island, underwater, storm sea, cliff, lighthouse + the scenes library) in dusk/night/storm/day palettes
-* `mvmaker/fx.py` animated lyric effects (tide, footprints, sand heart, boat, seagulls, lighthouse beam, lightning, rays, bubbles, seaweed, sinking heart, rising photos, clock, aurora, fireworks, shooting star)
+* `mvmaker/sets.py` storyboard scenery (beach, pier, island, underwater, storm sea, cliff, lighthouse, mountains, meadow, snow_town, kitchen + the scenes library) in dusk/night/storm/day palettes
+* `mvmaker/fx.py` animated lyric effects (tide, footprints, sand heart, boat, seagulls, lighthouse beam, lightning, rays, bubbles, seaweed, sinking heart, rising photos, messages, calendar, clock, steam, sunlight, aurora, fireworks, shooting star)
 * `mvmaker/scenes.py` background library (one function per scene; `POOLS` = scenes per mood, used only in template mode)
 * `mvmaker/character.py` box characters (expressions, accessories, walk cycle) as cached sprites
 * `mvmaker/render.py` storyboard planning, camera, particles, emotes, title card, karaoke subtitles, parallel encode

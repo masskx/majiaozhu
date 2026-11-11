@@ -109,9 +109,12 @@ def transcribe(audio, model_name="large-v3-turbo", hint_text=""):
     prompt = "以下是普通话歌曲的歌词。" + (hint_text[:120] if hint_text else "")
     stream = _run(model, audio, prompt, vad=True)
     minutes = len(audio) / 16000 / 60
-    if len(stream) < 25 * minutes:
-        # heavy beats (DJ remixes etc.) make the voice-activity filter drop the vocals: retry without it
-        print("> few words found; retrying without the voice-activity filter...", file=sys.stderr)
+    covered = (stream[-1][2] - stream[0][1]) / (len(audio) / 16000) if stream else 0.0
+    if len(stream) < 25 * minutes or covered < 0.6:
+        # heavy beats (DJ remixes) or live recordings (band, applause) make the voice-activity filter drop
+        # the vocals: retry without it
+        print(f"> few words found ({len(stream)} tokens, {covered:.0%} of the song); "
+              "retrying without the voice-activity filter...", file=sys.stderr)
         alt = _run(model, audio, prompt, vad=False)
         if len(alt) > len(stream):
             stream = alt
