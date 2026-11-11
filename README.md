@@ -5,7 +5,7 @@ videos in this repo (box-shaped characters, hand-inked scenes, karaoke subtitles
 
 | For every song | File | Notes |
 |---|---|---|
-| Lyric video | `output/<歌手-歌名>.mp4` | 1920×1080, 30 fps, H.264 + AAC, ~2 Mbit/s (≈60 MB for 4 min) |
+| Lyric video | `output/<歌手-歌名>.mp4` | 1920×1080, 30 fps, H.264 + AAC, ~2 Mbit/s (≈60 MB for 4 min; long songs get a lower bitrate so files stay under ~85 MB) |
 | Portrait cover 3:4 | `output/<name>_cover_3x4.jpg` | 1080×1440, for the vertical feed and profile grid |
 | Landscape cover 4:3 | `output/<name>_cover_4x3.jpg` | 1440×1080, for horizontal placements |
 | Title + 文案 | `output/<name>_文案.md` | 发布标题, alternative titles, 封面短句 (also printed on the covers), the post text, hashtags |
@@ -97,7 +97,7 @@ majiaozhu/
 | Motion | walk cycles, blinking, bobbing to the music's energy, the lead "singing" (mouth follows vocal loudness), hand-drawn line boil, camera push-ins and pans, crossfades, rain, snow, petals, dust, fireflies, flickering lamps and neon. |
 | Text | brush-lettered title card with an animated underline. Notebook-paper karaoke subtitles (`--style paper`, default) or gold-on-dark tags (`--style banner`). |
 | Covers | the opening scene re-framed for 3:4 and 4:3, the lead character drawn sharply at cover size, title + singer, and the 封面短句 on paper strips. |
-| Output | faststart MP4, H.264 CRF 22 capped near 2.2 Mbit/s, AAC 192k, ready for Douyin. |
+| Output | faststart MP4, H.264 CRF 22 capped at 2.2 Mbit/s (lowered automatically for songs over about 5 minutes, so the file stays under ~85 MB and fits GitHub's 100 MB limit), AAC 192k, ready for Douyin. |
 
 ### Commands
 

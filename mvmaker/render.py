@@ -605,15 +605,21 @@ def _render_bytes(f):
     return _PROJ.render(f).tobytes()
 
 
-def encode(project, out_path, start=0.0, length=None, workers=None, crf=22, maxrate="2200k"):
+def encode(project, out_path, start=0.0, length=None, workers=None, crf=22, maxrate=None, max_mb=85):
     global _PROJ
     _PROJ = project
     f0 = int(start * FPS)
     f1 = project.n_frames if length is None else min(project.n_frames, f0 + int(length * FPS))
     workers = workers or max(1, (mp.cpu_count() or 2) - 1)
+    if maxrate is None:
+        # 2.2 Mbit/s normally; lower for long songs so the file stays under ~85 MB (GitHub's limit is 100 MB)
+        secs = (f1 - f0) / FPS
+        kbps = int(min(2200, max(900, (max_mb * 8e6 / max(secs, 1) - 200e3) / 1000)))
+        maxrate = f"{kbps}k"
+    bufsize = f"{int(maxrate.rstrip('k')) * 2}k"
     cmd = ["ffmpeg", "-y", "-v", "error", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS),
            "-i", "-", "-ss", f"{f0 / FPS:.3f}", "-i", project.audio, "-map", "0:v:0", "-map", "1:a:0",
-           "-c:v", "libx264", "-preset", "medium", "-crf", str(crf), "-maxrate", maxrate, "-bufsize", "4400k",
+           "-c:v", "libx264", "-preset", "medium", "-crf", str(crf), "-maxrate", maxrate, "-bufsize", bufsize,
            "-tune", "animation", "-pix_fmt", "yuv420p",
            "-c:a", "aac", "-b:a", "192k", "-ar", "44100", "-shortest", "-movflags", "+faststart", out_path]
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)

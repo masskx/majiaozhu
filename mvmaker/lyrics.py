@@ -11,7 +11,8 @@ from .common import PUNCT, tokenize
 
 # things whisper likes to invent on music-only passages
 HALLUCINATIONS = ("字幕", "订阅", "點贊", "点赞", "谢谢观看", "感谢观看", "請不吝", "请不吝", "Amara", "明镜", "栏目",
-                  "以下是普通话", "独播剧场", "YoYo", "Television", "Exclusive")
+                  "以下是普通话", "独播剧场", "YoYo", "Television", "Exclusive",
+                  "Zither", "Z ither", "Har p")
 CREDIT_RE = re.compile(r"^(作词|作曲|编曲|演唱|歌手|制作|制作人|混音|母带|和声|吉他|贝斯|鼓|词|曲|监制|出品|OP|SP)\s*[:：]", re.I)
 
 

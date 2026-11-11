@@ -27,7 +27,7 @@ Three sources, best first:
    * a token that lands more than 2.5 s from its neighbour in the same line is a false match and is pulled back next to it.
 3. **Transcription only**: `lines_from_stream` cuts lines at punctuation, at pauses over 0.9 s, and at 14 characters (splitting at the largest pause near the middle). 1–2 character fragments are glued to the next line (usually a pickup syllable), otherwise to the previous one.
 
-Transcription details: faster-whisper `large-v3-turbo` with int8 on the CPU, `language="zh"`, and a prompt that says these are Mandarin song lyrics. The first pass uses the voice-activity filter. If it finds fewer than 25 tokens per minute (common with DJ remixes), it re-runs without the filter. Known hallucinations ("字幕由…", "优优独播剧场…") are filtered, and traditional characters are converted to simplified with OpenCC.
+Transcription details: faster-whisper `large-v3-turbo` with int8 on the CPU, `language="zh"`, and a prompt that says these are Mandarin song lyrics. The first pass uses the voice-activity filter. If it finds fewer than 25 tokens per minute (common with DJ remixes), it re-runs without the filter. Known hallucinations ("字幕由…", "优优独播剧场…", "Zither Harp" on instrumental intros) are filtered, and traditional characters are converted to simplified with OpenCC.
 
 ## 3. Storyboard (`render.plan`)
 
@@ -59,7 +59,7 @@ Transcription details: faster-whisper `large-v3-turbo` with int8 on the CPU, `la
   * `character.sprite` is an LRU cache of 320 poses;
   * subtitle strips are built once per line (dim layer + ink layer; the karaoke fill crops the ink layer at the current token boundary).
 * **Parallelism**: the `Project` is built in the parent and inherited by `fork`ed workers (copy-on-write). `Pool.imap(chunksize=4)` keeps frames in order for ffmpeg. About 13 frames/s on 4 cores.
-* **Encoding**: `libx264 -crf 22 -maxrate 2200k -bufsize 4400k -tune animation -pix_fmt yuv420p`, AAC 192k at 44.1 kHz, `-movflags +faststart`.
+* **Encoding**: `libx264 -crf 22 -maxrate R -bufsize 2R -tune animation -pix_fmt yuv420p`, AAC 192k at 44.1 kHz, `-movflags +faststart`. R is 2200k, or lower for long songs: `(85 MB × 8 / duration − 200 kbit/s audio)`, with a floor of 900k. This keeps every file under GitHub's 100 MB limit (6.5 min → about 1540k).
 
 ## 5. Covers (`cover.py`)
 
