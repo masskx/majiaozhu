@@ -414,6 +414,62 @@ def classroom(seed):
                  fg=f.final(), tint=(255, 248, 236))
 
 
+def dusk_stop(seed):
+    """Evening bus stop at sunset: the 'posted at night, missing someone' mood."""
+    rng = random.Random(seed)
+    c = Canvas(WW, WH, seed=seed)
+    c.vgrad(0, 0, WW, 470, C("#2c2c60"), C("#b5648a"))
+    c.vgrad(0, 470, WW, 900, C("#b5648a"), C("#f2a660"))
+    c.glow(1350, 820, 650, (255, 190, 120), 1.0)
+    c.ellipse(1350, 830, 110, 110, fill=(255, 214, 150), outline=None, wob=0)
+    for k in range(4):
+        y = 230 + k * 70
+        x0 = rng.uniform(-200, 1200)
+        c.ellipse(x0 + 300, y, rng.uniform(180, 320), 16, fill=(255, 200, 210, 60), outline=None, wob=0)
+    stars = stars_list(rng, 30, 220)
+    draw_stars(c, stars)
+    skyline(c, rng, 905, 160, 470, C("#3b2f58"), win_color=C("#f2c06a"), win_p=0.1)
+    # power lines with a few birds
+    for k, y0 in enumerate((150, 190)):
+        pts = []
+        for i in range(21):
+            t = i / 20
+            pts.append((-20 + (WW + 40) * t, y0 + 25 * k + 110 * 4 * t * (1 - t)))
+        c.line(pts, fill=C("#2a2140"), width=3, wob=0.3)
+        if k == 0:
+            for bx in (520, 560, 1490):
+                t = (bx + 20) / (WW + 40)
+                by = y0 + 110 * 4 * t * (1 - t)
+                c.ellipse(bx, by - 9, 11, 9, fill=C("#2a2140"), outline=None, wob=0)
+                c.poly([(bx + 6, by - 14), (bx + 18, by - 16), (bx + 8, by - 8)], fill=C("#2a2140"), outline=None, wob=0)
+    c.rect(-20, 905, WW + 20, 1030, fill=C("#5a4565"), width=5)
+    for x in range(-20, WW, 150):
+        c.line([(x, 905), (x - 25, 1030)], fill=C("#4e3b5a"), width=3)
+    c.rect(-20, 1030, WW + 20, WH + 20, fill=C("#3a2d4a"), width=5)
+    for x in range(40, WW, 240):
+        c.rect(x, 1110, x + 120, 1122, fill=C("#e8c9a0"), outline=None, wob=0.5)
+    c.rect(-20, 1040, WW + 20, WH, fill=(242, 166, 96, 22), outline=None, wob=0)
+    # bus stop shelter (right)
+    sx0, sx1 = 1500, 2010
+    c.rect(sx0, 560, sx0 + 18, 1000, fill=C("#2e2a44"), width=4)
+    c.rect(sx1 - 18, 560, sx1, 1000, fill=C("#2e2a44"), width=4)
+    c.rect(sx0 - 40, 530, sx1 + 40, 565, fill=C("#3c3656"), width=5)
+    c.rect(sx0 + 30, 600, sx1 - 30, 900, fill=(190, 210, 240, 45), outline=C("#2e2a44"), width=4, wob=0.5)
+    c.rect(sx0 + 40, 900, sx1 - 40, 930, fill=C("#6b5a72"), width=4)
+    c.rect(sx1 + 60, 420, sx1 + 74, 1000, fill=C("#2e2a44"), width=4)
+    c.rect(sx1 + 30, 380, sx1 + 104, 440, fill=C("#f2e6c8"), width=5)
+    c.ellipse(sx1 + 67, 410, 18, 18, fill=C("#5b86a0"), width=3)
+    # street lamp just switched on (left)
+    lx = 330
+    c.rect(lx - 9, 470, lx + 9, 1000, fill=C("#2e2a44"), width=4)
+    c.poly([(lx - 50, 470), (lx + 50, 470), (lx + 32, 438), (lx - 32, 438)], fill=C("#2e2a44"), width=4)
+    c.poly([(lx - 38, 472), (lx + 38, 472), (lx + 220, 1000), (lx - 220, 1000)], fill=(255, 214, 140, 24), outline=None, wob=0)
+    glows = [(lx, 485, 300, (255, 196, 110), 0.7, "lamp"), (sx1 + 67, 410, 160, (255, 240, 200), 0.35, "breath"),
+             (1350, 830, 500, (255, 170, 110), 0.25, "breath")]
+    return Scene("dusk_stop", c.final(), ground=1005, slots=[930, 1250, 1100], mood="lonely", particles="dust",
+                 tint=(236, 204, 222), glows=glows, stars=stars[::3])
+
+
 BUILDERS = {
     "city_rain": lambda s: city_night(s, rain=True),
     "city_night": lambda s: city_night(s, rain=False),
@@ -424,10 +480,15 @@ BUILDERS = {
     "school": school_street,
     "rooftop": rooftop,
     "classroom": classroom,
+    "dusk_stop": dusk_stop,
 }
 
 # scene pools for the overall feeling of the song: [opening/closing scene candidates], [middle scenes], [happy flashbacks]
 POOLS = {
+    # default: quiet, evening, missing someone. Mostly dusk/night scenes, a few warm memories
+    "melancholy": (["dusk_stop"],
+                   ["city_night", "snow_lake", "rooftop", "dusk_stop", "city_rain", "bedroom", "bar"],
+                   ["park", "classroom"]),
     "sad": (["city_rain", "bedroom"], ["bar", "snow_lake", "rooftop", "bedroom", "city_rain"], ["park", "classroom", "school"]),
     "sweet": (["school", "park"], ["classroom", "rooftop", "city_night", "park", "school"], ["snow_lake"]),
 }

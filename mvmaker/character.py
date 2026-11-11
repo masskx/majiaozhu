@@ -10,7 +10,7 @@ from .common import OUTLINE, Canvas, darker, hexrgb, mix
 BODY_W, BODY_H, LEG_H = 240, 165, 46
 
 # expression names
-EXPRESSIONS = ("neutral", "happy", "sad", "cry", "sleepy", "love", "surprised")
+EXPRESSIONS = ("neutral", "happy", "sad", "cry", "sleepy", "love", "surprised", "back")
 
 MOUTH_DARK = (92, 35, 52)
 TONGUE = (232, 120, 130)
@@ -213,15 +213,16 @@ def sprite(look_key, expr="neutral", blink=False, mouth=0, legs=0, arms=0, boil=
 
     ex = (x0 + bw * 0.34, x0 + bw * 0.66)
     ey = y0 + bh * 0.44
-    if expr in ("happy", "love", "neutral", "surprised") or expr == "cry":
+    if expr in ("happy", "love", "neutral", "surprised", "cry"):
         c.ellipse(x0 + bw * 0.2, ey + 22 * s, 15 * s, 8 * s, fill=BLUSH, outline=None, wob=0)
         c.ellipse(x0 + bw * 0.8, ey + 22 * s, 15 * s, 8 * s, fill=BLUSH, outline=None, wob=0)
     if expr == "cry":
         for x in ex:
             c.poly([(x - 7 * s, ey + 8 * s), (x + 7 * s, ey + 8 * s), (x + 8 * s, y1 - 3 * s), (x - 8 * s, y1 - 3 * s)],
                    fill=TEAR, outline=None, wob=0.6 * s)
-    _eyes(c, expr, blink, ex, ey, s, lw)
-    _mouth(c, expr, mouth, x0 + bw * 0.5, y0 + bh * 0.64, s, lw)
+    if expr != "back":   # back view: no face, a quiet silhouette looking away
+        _eyes(c, expr, blink, ex, ey, s, lw)
+        _mouth(c, expr, mouth, x0 + bw * 0.5, y0 + bh * 0.64, s, lw)
     if look.accessory:
         _accessory(c, look, x0, y0, x1, s, lw)
 

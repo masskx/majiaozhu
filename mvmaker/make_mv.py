@@ -47,10 +47,23 @@ def guess_names(path, tags):
 
 
 def guess_mood(lines):
+    """Default is the quiet evening 'melancholy' look; only clearly happy love songs switch to 'sweet'."""
     text = "".join(l.text for l in lines)
     sad = sum(text.count(c) for c in SAD_WORDS)
     sweet = sum(text.count(c) for c in SWEET_WORDS)
-    return "sweet" if sweet > sad * 1.3 else "sad"
+    return "sweet" if sweet > max(4, sad * 2) else "melancholy"
+
+
+def read_copy(path):
+    """Pull the cover line (封面短句) out of a <name>_文案.md written for the song."""
+    if not path or not os.path.exists(path):
+        return None
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            m = re.match(r"^\s*[-*]?\s*\**封面短句\**\s*[:：]\s*(.+?)\s*$", line)
+            if m:
+                return m.group(1).strip("「」\"' ")
+    return None
 
 
 def main(argv=None):
@@ -63,12 +76,17 @@ def main(argv=None):
     ap.add_argument("--no-asr", action="store_true", help="never run speech recognition")
     ap.add_argument("--no-lyrics", action="store_true", help="no subtitles at all")
     ap.add_argument("--asr-model", default="large-v3-turbo", help="faster-whisper model (small is faster, less accurate)")
-    ap.add_argument("--mood", choices=["auto", "sad", "sweet"], default="auto", help="picks the set of scenes")
+    ap.add_argument("--mood", choices=["auto", "melancholy", "sad", "sweet"], default="auto",
+                    help="scene set: melancholy (default, quiet evening), sad (rain/tears), sweet")
     ap.add_argument("--style", choices=["paper", "banner"], default="paper", help="lyric subtitle look")
     ap.add_argument("--seed", type=int, default=None, help="change for a different scene order / characters")
     ap.add_argument("--start", type=float, default=0.0, help="render from this second (preview)")
     ap.add_argument("--length", type=float, default=None, help="render only this many seconds (preview)")
     ap.add_argument("--stills", help="comma separated seconds: save PNG frames instead of a video")
+    ap.add_argument("--story", help="storyboard JSON (default: input/<name>.story.json if it exists)")
+    ap.add_argument("--tagline", help="short line for the covers; '/' = line break (default: 封面短句 in <name>_文案.md)")
+    ap.add_argument("--covers-only", action="store_true", help="only make the 3:4 and 4:3 covers")
+    ap.add_argument("--no-covers", action="store_true")
     ap.add_argument("--workers", type=int, default=None)
     ap.add_argument("--crf", type=int, default=22, help="x264 quality (lower = better/bigger)")
     a = ap.parse_args(argv)
@@ -95,10 +113,26 @@ def main(argv=None):
         write_lrc(lines, lrc, title, artist)
         print(f"> wrote the timed lyrics to {lrc} - fix any wrong words there and re-run with --lyrics {lrc}", file=sys.stderr)
 
-    proj = Project(a.audio, duration, lines, title, artist, mood=mood, style=a.style, seed=seed)
+    story = None
+    story_path = a.story or os.path.join(os.path.dirname(os.path.abspath(a.audio)), stem + ".story.json")
+    if os.path.exists(story_path):
+        from mvmaker.story import load
+        story = load(story_path)
+        print(f"> storyboard: {story_path} ({len(story['shots'])} shots)", file=sys.stderr)
+    elif a.story:
+        sys.exit(f"storyboard not found: {a.story}")
+    else:
+        print("! no storyboard found: using template scenes (write input/<name>.story.json for lyric-matched shots)", file=sys.stderr)
+    proj = Project(a.audio, duration, lines, title, artist, mood=mood, style=a.style, seed=seed, story=story)
     proj.describe()
+    base = os.path.splitext(out)[0]
+    tagline = a.tagline or read_copy(base + "_文案.md")
+    if a.covers_only or not a.no_covers:
+        from mvmaker.cover import make_covers
+        make_covers(proj, base, tagline)
+        if a.covers_only:
+            return
     if a.stills:
-        base = os.path.splitext(out)[0]
         for s in a.stills.split(","):
             f = int(float(s) * 30)
             p = f"{base}_{float(s):06.1f}s.png"

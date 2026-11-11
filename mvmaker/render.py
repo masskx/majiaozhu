@@ -71,7 +71,13 @@ def plan_cuts(duration, lines, rng):
     return out
 
 
-def choose_expr(scene_mood, flash, rng):
+def choose_expr(scene_mood, flash, rng, song_mood="sad"):
+    if song_mood == "melancholy" and not flash:
+        # quiet sadness: mostly still faces, rarely open crying
+        hero = rng.choice(["sad", "sad", "neutral", "neutral", "cry"] if scene_mood != "sweet" else ["neutral", "happy"])
+        partner = rng.choice(["neutral", "sad", "happy"])
+        emote = rng.choice([None, None, "cloud", "sparkle"])
+        return hero, partner, emote
     if flash or scene_mood in ("sweet", "happy", "nostalgic"):
         hero = rng.choice(["happy", "happy", "love", "neutral"])
         partner = rng.choice(["happy", "love"])
@@ -97,18 +103,23 @@ def plan(duration, lines, mood, seed):
     partner = Look(*PARTNERS[rng.randrange(len(PARTNERS))])
     opening, middle, flashes = scn.POOLS[mood]
     first = rng.choice(opening)
+    # melancholy tells "evening into night": open at dusk, close somewhere dark and quiet
+    last = rng.choice(["bedroom", "city_night"]) if mood == "melancholy" else first
     cuts = plan_cuts(duration, lines, rng)
     n = len(cuts) - 1
     mids = [m for m in middle if m != first] or middle[:]
     rng.shuffle(mids)
     fl = flashes[:]
     rng.shuffle(fl)
-    k = max(1, round(n * 0.22)) if n >= 3 else 0
+    share = {"melancholy": 0.15}.get(mood, 0.22)   # how many shots are warm flashbacks
+    k = max(1, round(n * share)) if n >= 3 else 0
     flash_at = {int(n * (0.28 + 0.5 * j / max(1, k - 1))) if k > 1 else n // 2 for j in range(k)}
     seq, fi = [], 0
     for i in range(n):
-        if i == 0 or (i == n - 1 and n > 2):
+        if i == 0:
             name, flash = first, False
+        elif i == n - 1 and n > 2:
+            name, flash = last, False
         elif i in flash_at:
             name, flash = fl[fi % len(fl)], True
             fi += 1
@@ -132,7 +143,7 @@ def plan(duration, lines, mood, seed):
         sc = built[name]
         a, b = cuts[i], cuts[i + 1]
         D = b - a
-        hx, px, pe = choose_expr(sc.mood, flash, rng)
+        hx, px, pe = choose_expr(sc.mood, flash, rng, mood)
         pair = sc.seated is not None or flash or (sc.mood in ("sweet", "happy") and rng.random() < 0.7) or \
             (0 < i < n - 1 and rng.random() < (0.45 if mood == "sweet" else 0.3))
         if i == n - 1 and n > 2:
@@ -192,9 +203,24 @@ class Particles:
         self.fly = r.random((32, 5))
 
     def draw(self, img, kind, t):
-        if not kind:
+        if not kind or kind == "none":
             return
         d = ImageDraw.Draw(img, "RGBA")
+        if kind == "storm":   # heavy, wind-driven rain
+            for x0, y0, v, ln in self.rain:
+                v = 2400 + v * 900
+                L = 50 + ln * 60
+                y = (y0 * (H + 200) + v * t) % (H + 200) - 100
+                x = (x0 * (W + 600) - 0.45 * v * t) % (W + 600) - 300
+                d.line([(x, y), (x - 0.45 * L, y + L)], fill=(215, 222, 255, int(90 + 80 * ln)), width=3)
+            return
+        if kind == "sand":    # wind blowing sand sideways
+            for x0, y0, v, ln in self.rain[:120]:
+                v = 900 + v * 700
+                x = (x0 * (W + 300) + v * t) % (W + 300) - 150
+                y = H * 0.35 + y0 * H * 0.65 + 20 * math.sin(t * 3 + x0 * 9)
+                d.line([(x, y), (x + 25 + 40 * ln, y + 3)], fill=(235, 205, 160, int(80 + 90 * ln)), width=2)
+            return
         if kind == "rain":
             for x0, y0, v, ln in self.rain:
                 v = 1700 + v * 900
@@ -454,25 +480,37 @@ class Subtitles:
 
 # ---------------------------------------------------------------- the project / frame renderer
 class Project:
-    def __init__(self, audio, duration, lines, title, artist, mood="sad", style="paper", seed=1):
+    def __init__(self, audio, duration, lines, title, artist, mood="sad", style="paper", seed=1, story=None):
         self.audio, self.duration = audio, duration
         self.n_frames = int(duration * FPS)
         self.energy, self.pulse = audio_features(audio, self.n_frames)
         self.lines = lines
-        self.shots = plan(duration, lines, mood, seed)
+        self.mood, self.seed = mood, seed
+        self.title_text, self.artist = title, artist
+        self.story = story
+        if story:   # storyboard mode: every shot written for its lyric lines
+            from .story import plan_story
+            self.shots = plan_story(story, lines, duration, seed)
+        else:       # template mode: scenes picked from mood pools
+            self.shots = plan(duration, lines, mood, seed)
+        self.cover_shot = (story or {}).get("cover")
         first = lines[0].start if lines else 8
         self.title = TitleCard(title, artist, max(4.5, min(first - 0.8, 9.0)))
         self.subs = Subtitles(lines, style, seed)
         self.particles = Particles(seed)
-        self.overlay = paper_overlay(W, H, seed)
+        # evening grade for melancholy: a little cooler/violet, deeper vignette
+        self.grade = (0.96, 0.94, 1.0) if mood == "melancholy" else None
+        self.overlay = paper_overlay(W, H, seed, vignette=0.4 if self.grade else 0.32, tint=self.grade)
         self.singing = np.zeros(self.n_frames, bool)
         for ln in lines:
             self.singing[int(ln.start * FPS):int(ln.end * FPS)] = True
 
     def describe(self):
         for s in self.shots:
-            acts = s.framing + ": " + ", ".join(f"{a.expr}{'/' + a.emote if a.emote else ''}" for a in s.actors)
-            print(f"  {s.start:6.1f}-{s.end:6.1f}s  {s.scene.name:<11} {acts}", file=sys.stderr)
+            acts = s.framing + ": " + ", ".join(f"{a.expr}{'/' + a.emote if a.emote else ''}" for a in s.actors
+                                                if getattr(a, "who", "hero") != "crowd")
+            note = getattr(s, "note", "")
+            print(f"  {s.start:6.1f}-{s.end:6.1f}s  {s.scene.name:<11} {acts}  {note}", file=sys.stderr)
 
     def shot_at(self, t):
         for i, s in enumerate(self.shots):
@@ -481,6 +519,11 @@ class Project:
         return len(self.shots) - 1
 
     def render_shot(self, shot, t, f):
+        world = self.render_world(shot, t, f)
+        return self.camera(shot, world, t)
+
+    def render_world(self, shot, t, f, actors=True):
+        """The scene at world resolution (before the camera): glows, stars, characters, emotes, foreground."""
         sc = shot.scene
         lt = t - shot.start
         D = max(0.1, shot.end - shot.start)
@@ -504,8 +547,26 @@ class Project:
                 r = s * (1.0 + 1.6 * b)
                 d.polygon(star_points(x, y, r * 2.2, r * 0.5), fill=(255, 255, 240, int(90 + 150 * b)))
 
+        shot_fx = getattr(shot, "fx", None)
+        ctx = {"sc": sc, "t": t, "lt": lt, "D": D, "seed": self.seed + int(shot.start * 10)}
+        if shot_fx:
+            from . import fx as fxm
+            fxm.draw(world, shot_fx, ctx, back=True)
+        if getattr(shot, "note", None) is not None and actors:   # storyboard actors
+            from .story import draw_actor
+            e = float(self.energy[min((f // 3) * 3, self.n_frames - 1)])
+            sing = bool(self.singing[min(f, self.n_frames - 1)])
+            # crowd extras first, named characters on top of them
+            order = sorted(range(len(shot.actors)), key=lambda i: (shot.actors[i].who != "crowd", shot.actors[i].sort_y))
+            for i in order:
+                draw_actor(world, shot.actors[i], ctx, f, i, e, pulse, sing)
+            if shot_fx:
+                fxm.draw(world, shot_fx, ctx, back=False)
+            if sc.fg is not None:
+                world.paste(sc.fg, (0, 0), sc.fg)
+            return world
         boil = int(f / 5) % 3
-        for ai, a in enumerate(shot.actors):
+        for ai, a in enumerate(shot.actors if actors else []):
             s = a.scale / 20.0
             if a.t_walk > 0 and lt < a.t_walk:
                 p = max(0.0, lt) / a.t_walk
@@ -539,18 +600,25 @@ class Project:
                 hat = {"beanie": 80, "cap": 50, "flower": 15, "bow": 20, "hair": 10}.get(a.look.accessory, 0)
                 top = y - (BODY_H + LEG_H) * s + bob - hat * s
                 draw_emote(world, a.emote, x, top, t, s)
-        if sc.fg is not None:
+        if sc.fg is not None and actors:
             world.paste(sc.fg, (0, 0), sc.fg)
+        return world
 
-        z0, z1, cx0, cx1, cy = shot.cam
+    def camera(self, shot, world, t):
+        sc = shot.scene
+        lt = t - shot.start
+        D = max(0.1, shot.end - shot.start)
+        z0, z1, cx0, cx1, cy0, *rest = shot.cam
+        cy1 = rest[0] if rest else cy0
         p = ease(min(1.0, max(0.0, lt / D)))
         z = z0 + (z1 - z0) * p
         cx = cx0 + (cx1 - cx0) * p
+        cy = cy0 + (cy1 - cy0) * p
         cw, ch = W / z, H / z
         cx = min(max(cx, cw / 2), WW - cw / 2)
         cy = min(max(cy, ch / 2), WH - ch / 2)
         view = world.resize((W, H), Image.BILINEAR, box=(cx - cw / 2, cy - ch / 2, cx + cw / 2, cy + ch / 2))
-        self.particles.draw(view, sc.particles, t)
+        self.particles.draw(view, getattr(shot, "weather", sc.particles), t)
         return view
 
     def render(self, f):
@@ -580,15 +648,21 @@ def _render_bytes(f):
     return _PROJ.render(f).tobytes()
 
 
-def encode(project, out_path, start=0.0, length=None, workers=None, crf=22, maxrate="2200k"):
+def encode(project, out_path, start=0.0, length=None, workers=None, crf=22, maxrate=None, max_mb=85):
     global _PROJ
     _PROJ = project
     f0 = int(start * FPS)
     f1 = project.n_frames if length is None else min(project.n_frames, f0 + int(length * FPS))
     workers = workers or max(1, (mp.cpu_count() or 2) - 1)
+    if maxrate is None:
+        # 2.2 Mbit/s normally; lower for long songs so the file stays under ~85 MB (GitHub's limit is 100 MB)
+        secs = (f1 - f0) / FPS
+        kbps = int(min(2200, max(900, (max_mb * 8e6 / max(secs, 1) - 200e3) / 1000)))
+        maxrate = f"{kbps}k"
+    bufsize = f"{int(maxrate.rstrip('k')) * 2}k"
     cmd = ["ffmpeg", "-y", "-v", "error", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS),
            "-i", "-", "-ss", f"{f0 / FPS:.3f}", "-i", project.audio, "-map", "0:v:0", "-map", "1:a:0",
-           "-c:v", "libx264", "-preset", "medium", "-crf", str(crf), "-maxrate", maxrate, "-bufsize", "4400k",
+           "-c:v", "libx264", "-preset", "medium", "-crf", str(crf), "-maxrate", maxrate, "-bufsize", bufsize,
            "-tune", "animation", "-pix_fmt", "yuv420p",
            "-c:a", "aac", "-b:a", "192k", "-ar", "44100", "-shortest", "-movflags", "+faststart", out_path]
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)

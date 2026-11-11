@@ -236,7 +236,7 @@ def add_glow(img, cx, cy, r, color, strength=1.0):
         img.paste(ImageChops.screen(region, gc), box[:2])
 
 
-def paper_overlay(w, h, seed=7, vignette=0.32, warm=True):
+def paper_overlay(w, h, seed=7, vignette=0.32, warm=True, tint=None):
     """Multiply layer: paper blotches + fine grain + vignette. Gives the textured, printed-on-paper look."""
     rng = np.random.default_rng(seed)
 
@@ -248,7 +248,7 @@ def paper_overlay(w, h, seed=7, vignette=0.32, warm=True):
     yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
     dx, dy = (xx - w / 2) / (w / 2), (yy - h / 2) / (h / 2)
     v *= 1 - vignette * np.clip((dx * dx * 0.8 + dy * dy) - 0.25, 0, None) ** 1.2
-    tint = np.array([1.0, 0.985, 0.955] if warm else [1, 1, 1], np.float32)
+    tint = np.array(tint or ([1.0, 0.985, 0.955] if warm else [1, 1, 1]), np.float32)
     arr = np.clip(v[..., None] * tint[None, None, :] * 255, 0, 255).astype(np.uint8)
     return Image.fromarray(arr, "RGB")
 
