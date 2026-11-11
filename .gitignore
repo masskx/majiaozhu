@@ -1,3 +1,4 @@
 __pycache__/
 *.pyc
-output/*.png
+# preview stills written by --stills
+*_[0-9][0-9][0-9][0-9].[0-9]s.png

@@ -1,4 +1,4 @@
-"""Storyboard mode: every shot is written for its lyric lines (input/<name>.story.json).
+"""Storyboard mode: every shot is written for its lyric lines (songs/<name>/<name>.story.json).
 
 Storyboard format (world coordinates are 2150 x 1209; the frame shows the middle ~1920 x 1080):
 {

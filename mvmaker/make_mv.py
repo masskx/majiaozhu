@@ -2,10 +2,14 @@
 """Turn an MP3 into an animated lyric music video (1920x1080, 30fps, H.264 + AAC).
 
 Examples
-  python3 -m mvmaker.make_mv song.mp3
+Each song lives in its own folder, songs/<歌手-歌名>/, next to everything made for it:
+  <name>.mp3  <name>.txt / <name>.lrc  <name>.story.json  <name>_文案.md   (inputs)
+  <name>.mp4  <name>_cover_3x4.jpg  <name>_cover_4x3.jpg  <name>.lrc       (outputs)
+
+  python3 -m mvmaker.make_mv songs/<name>/<name>.mp3                      # finds lyrics/storyboard/文案 itself
+  python3 -m mvmaker.make_mv songs/<name>/<name>.mp3 --stills 3,40,90     # quick look at a few frames
+  python3 -m mvmaker.make_mv songs/<name>/<name>.mp3 --start 30 --length 15   # short preview clip
   python3 -m mvmaker.make_mv song.mp3 --title 失眠 --artist Suki刘舒妤 --lyrics song.lrc
-  python3 -m mvmaker.make_mv song.mp3 --stills 3,40,90        # quick look at a few frames
-  python3 -m mvmaker.make_mv song.mp3 --start 30 --length 15   # render a short preview clip
 """
 import argparse
 import json
@@ -69,10 +73,11 @@ def read_copy(path):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("audio", help="input .mp3 (or any audio ffmpeg can read)")
-    ap.add_argument("-o", "--output", help="output .mp4 (default: output/<name>.mp4)")
+    ap.add_argument("-o", "--output", help="output .mp4 (default: <name>.mp4 next to the audio, i.e. in the song folder)")
     ap.add_argument("--title", help="song title shown on the title card (default: from tags/filename)")
     ap.add_argument("--artist", help="singer shown under the title (default: from tags/filename)")
-    ap.add_argument("--lyrics", help=".lrc (timed) or .txt (one line per lyric line; timing found automatically)")
+    ap.add_argument("--lyrics", help=".lrc (timed) or .txt (one line per lyric line; timing found automatically). "
+                    "Default: <name>.lrc, else <name>.txt, next to the audio")
     ap.add_argument("--no-asr", action="store_true", help="never run speech recognition")
     ap.add_argument("--no-lyrics", action="store_true", help="no subtitles at all")
     ap.add_argument("--asr-model", default="large-v3-turbo", help="faster-whisper model (small is faster, less accurate)")
@@ -84,7 +89,7 @@ def main(argv=None):
     ap.add_argument("--start", type=float, default=0.0, help="render from this second (preview)")
     ap.add_argument("--length", type=float, default=None, help="render only this many seconds (preview)")
     ap.add_argument("--stills", help="comma separated seconds: save PNG frames instead of a video")
-    ap.add_argument("--story", help="storyboard JSON (default: input/<name>.story.json if it exists)")
+    ap.add_argument("--story", help="storyboard JSON (default: <name>.story.json next to the audio)")
     ap.add_argument("--tagline", help="short line for the covers; '/' = line break (default: 封面短句 in <name>_文案.md)")
     ap.add_argument("--covers-only", action="store_true", help="only make the 3:4 and 4:3 covers")
     ap.add_argument("--no-covers", action="store_true")
@@ -96,8 +101,16 @@ def main(argv=None):
     title, artist = guess_names(a.audio, tags)
     title, artist = a.title or title, a.artist if a.artist is not None else artist
     stem = os.path.splitext(os.path.basename(a.audio))[0]
-    out = a.output or os.path.join("output", stem + ".mp4")
+    song_dir = os.path.dirname(os.path.abspath(a.audio))
+    out = a.output or os.path.join(song_dir, stem + ".mp4")
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
+    if not a.lyrics and not a.no_lyrics:   # corrected .lrc first, then plain-text lyrics, else transcription
+        for ext in (".lrc", ".txt"):
+            cand = os.path.join(song_dir, stem + ext)
+            if os.path.exists(cand):
+                a.lyrics = cand
+                print(f"> lyrics: {cand}", file=sys.stderr)
+                break
 
     if a.no_lyrics:
         lines, meta, src = [], {}, "none"
@@ -115,7 +128,7 @@ def main(argv=None):
         print(f"> wrote the timed lyrics to {lrc} - fix any wrong words there and re-run with --lyrics {lrc}", file=sys.stderr)
 
     story = None
-    story_path = a.story or os.path.join(os.path.dirname(os.path.abspath(a.audio)), stem + ".story.json")
+    story_path = a.story or os.path.join(song_dir, stem + ".story.json")
     if os.path.exists(story_path):
         from mvmaker.story import load
         story = load(story_path)
@@ -123,7 +136,7 @@ def main(argv=None):
     elif a.story:
         sys.exit(f"storyboard not found: {a.story}")
     else:
-        print("! no storyboard found: using template scenes (write input/<name>.story.json for lyric-matched shots)", file=sys.stderr)
+        print("! no storyboard found: using template scenes (write songs/<name>/<name>.story.json for lyric-matched shots)", file=sys.stderr)
     if story and story.get("mood"):
         mood = story["mood"]   # the storyboard can set the look of the whole video (e.g. "sweet")
         print(f"> mood from storyboard: {mood}", file=sys.stderr)
