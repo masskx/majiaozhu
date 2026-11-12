@@ -39,6 +39,7 @@ Transcription details: faster-whisper `large-v3-turbo` with int8 on the CPU, `la
   * `back` draws the faceless back view; `umbrella` draws a scalloped umbrella (`umbrella_dx` shifts it over someone else);
   * `look` overrides colour/accessory per shot (white `hair` = old age); `scarf` and `phone` draw props on the body;
   * `hull` sizes the boat (0 = sitting in someone else's boat); `z` lifts a character above others;
+  * `guitar`, `cane` and `backpack` draw props (backpack behind the body; guitar strums with a small wobble);
   * crowds are generated grey walkers in two depth rows;
   * named characters are drawn after the crowd.
 * **Effects** (`fx.draw`): names in `fx.BACK` are drawn behind the characters, the rest in front.
@@ -83,13 +84,13 @@ Transcription details: faster-whisper `large-v3-turbo` with int8 on the CPU, `la
   * `character.sprite` is an LRU cache of 320 poses;
   * subtitle strips are built once per line (dim layer + ink layer; the karaoke fill crops the ink layer at the current token boundary).
 * **Parallelism**: the `Project` is built in the parent and inherited by `fork`ed workers (copy-on-write). `Pool.imap(chunksize=4)` keeps frames in order for ffmpeg. About 13 frames/s on 4 cores.
-* **Encoding**: `libx264 -crf 22 -maxrate R -bufsize 2R -tune animation -pix_fmt yuv420p`, AAC 192k at 44.1 kHz, `-movflags +faststart`. R is 2200k, or lower for long songs: `(85 MB × 8 / duration − 200 kbit/s audio)`, with a floor of 900k. This keeps every file under GitHub's 100 MB limit (6.5 min → about 1540k).
+* **Encoding**: `libx264 -crf 22 -maxrate R -bufsize 2R -tune animation -pix_fmt yuv420p`, AAC 192k at 44.1 kHz, `-map_chapters -1` (MP3s with chapter metadata would otherwise add an empty data track), `-movflags +faststart`. R is 2200k, or lower for long songs: `(85 MB × 8 / duration − 200 kbit/s audio)`, with a floor of 900k. This keeps every file under GitHub's 100 MB limit (6.5 min → about 1540k).
 
 ## 5. Covers (`cover.py`)
 
 1. Pick the scene: `dusk_stop` for melancholy, otherwise the opening scene. Render its world without characters, then extend the ground 360 px downward (a mirrored copy of the bottom band) so a tall crop can sit the character higher.
 2. Crop to the aspect ratio. In 3:4 the lead is centred with the ground at 66% height. In 4:3 the lead sits at 70% across and the text goes on the left.
-3. Draw the lead sprite at cover resolution (sharp, not upscaled) with a `sad` face for melancholy/sad songs.
+3. Draw the shot's background effects too (a parked train, a lighthouse beam). Then draw the lead sprite on the side away from the text (centred in 3:4, at 70% across in 4:3), at cover resolution (sharp, not upscaled) with a `sad` face for melancholy/sad songs.
 4. Apply the paper overlay and grade, then darken the top (3:4) or left (4:3) so the text reads.
 5. Add the brush title with shadow and gold underline, the singer, and the tagline on 1–3 paper strips (split on `/`, or at a comma near the middle of long lines).
 

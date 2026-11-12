@@ -87,7 +87,9 @@ def make_cover(proj, kind, out_path, tagline=None):
         shot0 = proj.shots[0]
         sc = next((s.scene for s in proj.shots if s.scene.name == "dusk_stop"), shot0.scene) \
             if proj.mood == "melancholy" else shot0.scene
-    world = proj.render_world(Shot(0, 10, sc, [], shot0.cam), 3.0, 90, actors=False)
+    bare = Shot(0, 10, sc, [], shot0.cam)
+    bare.fx = getattr(shot0, "fx", None)   # background effects of the cover shot (a parked train, a lighthouse beam…)
+    world = proj.render_world(bare, 3.0, 90, actors=False)
 
     # extend the ground downward so a tall crop can sit the character higher
     EXT = 360
@@ -129,7 +131,8 @@ def make_cover(proj, kind, out_path, tagline=None):
         expr = (getattr(proj, "story", None) or {}).get("cover_face") or \
             ("sad" if proj.mood in ("melancholy", "sad") else "happy")
         sp, (ax, ay) = sprite(look.key(), expr, False, 0, 0, 0, 0, q, sc.tint)
-        fx_px, fy_px = (hero_x - x0) * k, (sc.ground - y0) * k
+        # always on the side away from the text (the crop may have been clamped at the scene's edge)
+        fx_px, fy_px = OW * fx, (sc.ground - y0) * k
         img.paste(sp, (int(fx_px - ax), int(fy_px - ay)), sp)
     if fg_src is not None and not fg_first:
         fg = fg_src.resize((OW, OH), Image.LANCZOS, box=box)
