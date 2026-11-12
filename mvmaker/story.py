@@ -21,6 +21,7 @@ Storyboard format (world coordinates are 2150 x 1209; the frame shows the middle
 who: hero ("I"), partner ("you"), extra (a third person, e.g. the one who took my place), crowd.
 acts: stand, walk (x -> x1), sit, float, sink (y -> y1), boat (sits in a rocking boat), dance.
 more cast keys: "look": [colour, accessory, accessory colour] (e.g. white "hair" for old age), "scarf": colour,
+  "guitar": true, "cane": true, "backpack": colour,
   "phone": true (glowing phone in hand), "umbrella_dx": px (shift the umbrella over someone beside you),
   "hull": 0 (sit in someone else's boat; 1.5 = a wider boat for two), "z": 1 (draw on top), "arms": 0/1/2,
   crowd: {"who": "crowd", "n": 12, "umbrella": true, "colorful": true}
@@ -66,6 +67,9 @@ class SActor:
         self.scarf = d.get("scarf")                    # colour of a scarf
         self.phone = d.get("phone", False)             # holding a glowing phone
         self.z = d.get("z", 0)                         # drawing order among named characters
+        self.guitar = d.get("guitar", False)           # playing a guitar (指尖弹出盛夏)
+        self.cane = d.get("cane", False)               # walking stick (old age)
+        self.backpack = d.get("backpack")              # colour of a travel backpack
         self.arms = d.get("arms", 0)
         self.phase = d.get("phase", random.random() * 3)
         self.sort_y = max(self.y0, self.y1) + 10000 * d.get("z", 0)
@@ -240,6 +244,12 @@ def draw_actor(world, a, ctx, f, ai, energy, pulse, singing):
         img = img.copy()
         img.putalpha(img.getchannel("A").point(lambda v: int(v * alpha)))
     yy = y_feet + bob
+    if a.backpack:   # behind the body, peeking out on the left
+        bcol = hexrgb(a.backpack) if isinstance(a.backpack, str) else a.backpack
+        bd = ImageDraw.Draw(world, "RGBA")
+        bb = yy - LEG_H * s
+        bd.rounded_rectangle([x - 150 * s, bb - 150 * s, x - 70 * s, bb - 20 * s], radius=int(18 * s), fill=bcol + (255,),
+                             outline=OUTLINE, width=max(2, int(5 * s)))
     if a.umbrella:
         ud = ImageDraw.Draw(world, "RGBA")
         _umbrella(ud, x + a.umbrella_dx * s, yy - (BODY_H + LEG_H + 170) * s, s, a.umbrella)
@@ -260,6 +270,19 @@ def draw_actor(world, a, ctx, f, ai, energy, pulse, singing):
         add_glow(world, px, py - 30 * s, 160 * s, (170, 210, 255), 0.6)
         d.rounded_rectangle([px - 26 * s, py - 70 * s, px + 26 * s, py + 20 * s], radius=int(8 * s), fill=(40, 40, 60, 255), outline=OUTLINE, width=max(2, int(4 * s)))
         d.rounded_rectangle([px - 19 * s, py - 62 * s, px + 19 * s, py + 10 * s], radius=int(5 * s), fill=(190, 225, 255, 255))
+    if a.guitar:     # held across the body; strumming wobble
+        gx, gy = x + 20 * s, body_bottom - 55 * s + 3 * s * math.sin(t * 9)
+        gb = (190, 120, 70)
+        d.line([(gx + 40 * s, gy - 10 * s), (gx + 210 * s, gy - 90 * s)], fill=(110, 70, 45, 255), width=max(3, int(16 * s)))
+        d.line([(gx + 40 * s, gy - 10 * s), (gx + 210 * s, gy - 90 * s)], fill=OUTLINE, width=max(1, int(3 * s)))
+        d.rectangle([gx + 200 * s, gy - 104 * s, gx + 238 * s, gy - 80 * s], fill=(110, 70, 45, 255), outline=OUTLINE)
+        for cx, cy, r in ((gx - 30 * s, gy + 10 * s, 62 * s), (gx + 30 * s, gy - 8 * s, 48 * s)):
+            d.ellipse([cx - r, cy - r * 0.8, cx + r, cy + r * 0.8], fill=gb + (255,), outline=OUTLINE, width=max(2, int(5 * s)))
+        d.ellipse([gx - 10 * s, gy - 18 * s, gx + 18 * s, gy + 8 * s], fill=(70, 45, 35, 255))
+    if a.cane:
+        cx = x + 150 * s
+        d.line([(cx, body_bottom - 70 * s), (cx + 14 * s, y_feet + bob)], fill=(120, 80, 55, 255), width=max(3, int(9 * s)))
+        d.arc([cx - 40 * s, body_bottom - 100 * s, cx + 4 * s, body_bottom - 50 * s], 180, 360, fill=(120, 80, 55, 255), width=max(3, int(9 * s)))
     if a.act == "boat" and a.hull > 0:
         c, sn = math.cos(math.radians(-rot)), math.sin(math.radians(-rot))
 

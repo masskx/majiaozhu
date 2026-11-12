@@ -694,7 +694,7 @@ def encode(project, out_path, start=0.0, length=None, workers=None, crf=22, maxr
            "-i", "-", "-ss", f"{f0 / FPS:.3f}", "-i", project.audio, "-map", "0:v:0", "-map", "1:a:0",
            "-c:v", "libx264", "-preset", "medium", "-crf", str(crf), "-maxrate", maxrate, "-bufsize", bufsize,
            "-tune", "animation", "-pix_fmt", "yuv420p",
-           "-c:a", "aac", "-b:a", "192k", "-ar", "44100", "-shortest", "-movflags", "+faststart", out_path]
+           "-c:a", "aac", "-b:a", "192k", "-ar", "44100", "-shortest", "-map_chapters", "-1", "-movflags", "+faststart", out_path]
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
     t0 = time.time()
     ctx = mp.get_context("fork")

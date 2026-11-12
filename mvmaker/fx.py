@@ -12,7 +12,7 @@ from PIL import Image, ImageChops, ImageDraw
 from .common import OUTLINE, WH, WW, add_glow, ease, heart_points, star_points
 
 BACK = {"waves", "tide", "footprints", "sand_heart", "boat_far", "seagulls", "rays", "beam", "lightning",
-        "shooting_star", "clock", "aurora", "fireworks", "sunbeam", "calendar", "steam", "sunlight", "autumn_turn"}
+        "shooting_star", "clock", "aurora", "fireworks", "sunbeam", "calendar", "steam", "sunlight", "autumn_turn", "train", "portrait"}
 
 
 def _d(img):
@@ -474,6 +474,87 @@ def fx_autumn_turn(img, p, ctx):
     warm = Image.new("RGB", img.size, (246, 160, 92))
     blended = ImageChops.multiply(img.convert("RGB"), Image.blend(Image.new("RGB", img.size, (255, 255, 255)), warm, 0.5 * k))
     img.paste(blended)
+
+
+def fx_train(img, p, ctx):
+    """A little train on the tracks, arriving (x0 -> x1, slowing down) or leaving."""
+    sc, lt, D, t = ctx["sc"], ctx["lt"], ctx["D"], ctx["t"]
+    k = min(1, max(0, lt / (D * p.get("dur", 0.7))))
+    k = 1 - (1 - k) ** 2 if p.get("ease", "out") == "out" else k * k
+    head = p.get("x0", -200) + (p.get("x1", 1600) - p.get("x0", -200)) * k
+    base = getattr(sc, "track", 850)
+    d = _d(img)
+    body = p.get("color", (110, 150, 170))
+    n, L = int(p.get("cars", 3)), 640
+    for c in range(n):
+        x1 = head - c * (L + 24)
+        x0 = x1 - L
+        y0, y1 = base - 230, base - 18
+        d.rounded_rectangle([x0, y0, x1, y1], radius=26, fill=body + (255,), outline=OUTLINE, width=6)
+        d.rectangle([x0 + 6, y1 - 50, x1 - 6, y1 - 28], fill=(240, 228, 200, 255))
+        for wx in range(int(x0 + 50), int(x1 - 80), 110):
+            d.rounded_rectangle([wx, y0 + 40, wx + 80, y0 + 120], radius=10, fill=(255, 214, 140, 255), outline=OUTLINE, width=4)
+        for wx in (x0 + 110, x1 - 110):
+            d.ellipse([wx - 26, y1 - 14, wx + 26, y1 + 38], fill=(60, 54, 70, 255), outline=OUTLINE, width=4)
+        if c == 0:
+            add_glow(img, x1 - 10, y1 - 80, 160, (255, 230, 170), 0.6)
+    if 0 < k < 1:   # steam puffs while moving
+        for j in range(4):
+            ph = (t * 1.2 + j / 4) % 1
+            r = 20 + 50 * ph
+            d.ellipse([head - 120 - ph * 200 - r, base - 260 - ph * 120 - r, head - 120 - ph * 200 + r, base - 260 - ph * 120 + r],
+                      fill=(255, 255, 255, int(130 * (1 - ph))))
+
+
+def fx_wind(img, p, ctx):
+    """起风了: long curving gusts sweeping across the picture, with leaves or petals riding them."""
+    t = ctx["t"]
+    d = _d(img)
+    r = _rng(ctx, 21)
+    strength = p.get("strength", 1.0)
+    for k in range(int(8 * strength)):
+        y0 = r.uniform(150, WH - 250)
+        sp = r.uniform(500, 900)
+        ph = ((t * sp / 2400) + r.random()) % 1.4 - 0.2
+        L = r.uniform(500, 900)
+        x_head = -200 + ph * (WW + 600)
+        pts = []
+        for i in range(24):
+            f = i / 23
+            x = x_head - L * (1 - f)
+            y = y0 + 40 * math.sin(f * 4 + t * 1.5 + k) - 60 * f * f
+            pts.append((x, y))
+        a = int(90 * strength * math.sin(min(1, max(0, ph + 0.2) / 1.4) * math.pi))
+        d.line(pts, fill=(255, 255, 255, max(0, a)), width=5, joint="curve")
+        x, y = pts[-1]   # curl at the head of the gust
+        d.arc([x - 40, y - 60, x + 40, y + 20], 200, 470, fill=(255, 255, 255, max(0, a)), width=5)
+    cols = p.get("colors", [(250, 190, 200), (255, 230, 170), (230, 160, 120)])
+    for k in range(int(26 * strength)):
+        sp = r.uniform(300, 650)
+        x = (r.uniform(0, WW) + t * sp) % (WW + 200) - 100
+        y = r.uniform(100, WH - 150) + 50 * math.sin(t * 2 + k)
+        a = t * 4 + k
+        rx, ry = 12, 6
+        pts = [(x + rx * math.cos(th) * math.cos(a) - ry * math.sin(th) * math.sin(a),
+                y + rx * math.cos(th) * math.sin(a) + ry * math.sin(th) * math.cos(a)) for th in [i * math.pi / 6 for i in range(12)]]
+        d.polygon(pts, fill=cols[k % len(cols)] + (230,), outline=OUTLINE + (120,))
+
+
+def fx_portrait(img, p, ctx):
+    """A framed painting of someone (走进床头藏起的画 / 画中的你 低着头说话)."""
+    from .character import Look, sprite
+    x, y, w, h = p.get("x", 1075), p.get("y", 330), p.get("w", 300), p.get("h", 340)
+    d = _d(img)
+    d.rectangle([x - w / 2 - 22, y - h / 2 - 22, x + w / 2 + 22, y + h / 2 + 22], fill=(170, 120, 80, 255), outline=OUTLINE, width=6)
+    d.rectangle([x - w / 2, y - h / 2, x + w / 2, y + h / 2], fill=(248, 232, 210, 255), outline=OUTLINE, width=4)
+    for i in range(int(h)):   # soft painted background
+        f = i / h
+        d.line([(x - w / 2 + 4, y - h / 2 + i), (x + w / 2 - 4, y - h / 2 + i)], fill=(int(250 - 40 * f), int(214 - 30 * f), int(200 + 10 * f), 255))
+    look = Look(p.get("color", "#e59ab0"), p.get("accessory", "flower"), p.get("acc_color"))
+    sp, (ax, ay) = sprite(look.key(), p.get("face", "sleepy"), False, 0, 0, 0, 0, p.get("s", 14))
+    sp = sp.rotate(p.get("tilt", -6), resample=Image.BICUBIC, expand=True)   # head bowed a little
+    img.paste(sp, (int(x - sp.width / 2), int(y + h / 2 - sp.height + 30)), sp)
+    add_glow(img, x, y, max(w, h) * 0.9, (255, 220, 170), 0.25 + 0.08 * math.sin(ctx["t"] * 1.3))
 
 
 def draw(img, effects, ctx, back):

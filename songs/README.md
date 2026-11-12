@@ -21,6 +21,7 @@ Re-render any song with `python3 -m mvmaker.make_mv "songs/<name>/<name>.mp3"`.
 | [伤心太平洋](洋澜一-伤心太平洋/) | 洋澜一 (DJ版) | 3:44 | melancholy | 48 | 我等的船还不来，我等的人还不明白 | lyrics exact |
 | [你是人间四月天](解忧邵帅-你是人间四月天/) | 解忧邵帅 (Live) | 2:58 | melancholy | 37 | 愿你在我看不到的地方，安然无恙 | a few live-recording lines uncertain (see 文案 notes in chat) |
 | [秋殇别恋](牙牙乐格子兮-秋殇别恋/) | 牙牙乐 / 格子兮 | 4:37 | sweet (cute) | 52 | 落叶两片三片，片片都是想你 | rap bridge (1:49–2:10) lyrics uncertain |
+| [起风了](买辣椒也用券-起风了/) | 买辣椒也用券 | 5:13 | melancholy | 56 | 风吹起了从前，也吹白了你的发 | lyrics exact; a life story from the hometown station to old age |
 
 ## Earlier versions
 

@@ -405,6 +405,49 @@ def autumn_park(seed, time="pastel"):
     sc.fg_y = 940      # characters standing below this line are in front of the bench
     return sc
 
+def station(seed, time="dusk"):
+    """Small countryside train station: platform, tracks behind it, a sign, mountains (近乡情怯 / 车站)."""
+    rng = random.Random(seed)
+    c = Canvas(WW, WH, seed=seed)
+    horizon = 700
+    stars = sky(c, rng, time, horizon)
+    _sun(c, time, 1650, 640)
+    for k, (y0, amp) in enumerate(((600, 150), (680, 110))):
+        col = mix(_pal(time)[1], (40, 34, 60), 0.45 + 0.15 * k)
+        pts = [(-20, 760)] + [(x, y0 - amp * abs(math.sin(x / (300 + 80 * k) + k))) for x in range(-20, WW + 80, 80)] + [(WW + 20, 760)]
+        c.poly(pts, fill=col, width=5, wob=1.5)
+    field = mix(_pal(time)[1], (90, 110, 70), 0.55)
+    c.rect(-20, 740, WW + 20, 830, fill=field, width=5)
+    c.rect(-20, 830, WW + 20, 870, fill=C("#5b5160"), width=4)          # track bed
+    for x in range(-20, WW + 40, 46):
+        c.rect(x, 836, x + 22, 866, fill=C("#6e5a4c"), outline=None, wob=0.3)
+    c.line([(-20, 842), (WW + 20, 842)], fill=C("#a9a6b8"), width=5, wob=0)
+    c.line([(-20, 860), (WW + 20, 860)], fill=C("#a9a6b8"), width=5, wob=0)
+    plat = C("#b7aab0") if time != "night" else C("#5a5470")
+    c.rect(-20, 870, WW + 20, WH + 20, fill=plat, width=6)
+    c.rect(-20, 870, WW + 20, 900, fill=C("#e9d28a"), width=4)        # yellow safety line
+    for x in range(-20, WW, 180):
+        c.line([(x, 900), (x - 50, WH)], fill=darker(plat, 0.9), width=3)
+    # canopy + bench on the left
+    c.rect(80, 420, 104, 880, fill=C("#5a4a5e"), width=4)
+    c.rect(560, 420, 584, 880, fill=C("#5a4a5e"), width=4)
+    c.poly([(30, 420), (640, 420), (600, 380), (70, 380)], fill=C("#7a5a6a"), width=5)
+    # station name board
+    c.rect(1500, 560, 1516, 880, fill=C("#4a4256"), width=4)
+    c.rect(1700, 560, 1716, 880, fill=C("#4a4256"), width=4)
+    c.rect(1440, 470, 1780, 580, fill=C("#f6f1e6"), width=6)
+    from .common import draw_text, text_width
+    from PIL import ImageDraw
+    d = ImageDraw.Draw(c.img)
+    tw = text_width("长野", "brush", 140)
+    draw_text(d, 1610 * 2 - tw / 2, 552 * 2, "长野", "brush", 140, (60, 50, 70))   # canvas is 2x supersampled
+    lx = 1100
+    c.rect(lx - 8, 520, lx + 8, 880, fill=C("#4a4256"), width=4)
+    c.ellipse(lx, 505, 28, 28, fill=C("#fff1c8"), width=4)
+    glows = [(lx, 505, 240, (255, 210, 140), 0.7 if time in ("dusk", "night") else 0.15, "lamp")]
+    return _scene("station", c, ground=990, slots=[930, 1230, 1075], time=time, horizon=horizon, stars=stars[::4],
+                  glows=glows, track=850)
+
 def from_library(name):
     def make(seed, time=None):
         return scn.build(name, seed)
@@ -414,7 +457,7 @@ def from_library(name):
 SETS = {
     "beach": beach, "pier": pier, "island": island, "underwater": underwater, "storm_sea": storm_sea,
     "cliff": cliff, "lighthouse": lighthouse, "mountains": mountains, "meadow": meadow, "snow_town": snow_town,
-    "kitchen": kitchen, "autumn_park": autumn_park,
+    "kitchen": kitchen, "autumn_park": autumn_park, "station": station,
     # the earlier library (fixed time of day)
     "city_rain": from_library("city_rain"), "city_night": from_library("city_night"), "bedroom": from_library("bedroom"),
     "park": from_library("park"), "snow_lake": from_library("snow_lake"), "bar": from_library("bar"),
