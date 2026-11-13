@@ -94,7 +94,7 @@ The four videos in `references/` are the style references (README.md section 1 h
 * `mvmaker/lyrics.py` LRC parsing, Whisper transcription (with VAD fallback), aligning plain-text lyrics to the transcription
 * `mvmaker/story.py` storyboard mode: shots from `songs/<name>/<name>.story.json`, extended character acts (walk away, sit, boat, float, sink, umbrella, fade, back view), crowds
 * `mvmaker/sets.py` storyboard scenery (beach, pier, island, underwater, storm sea, cliff, lighthouse, mountains, meadow, snow_town, kitchen, autumn_park, station + the scenes library) in dusk/night/storm/day/pastel/pastel_night palettes
-* `mvmaker/fx.py` animated lyric effects (tide, footprints, sand heart, boat, seagulls, lighthouse beam, lightning, rays, bubbles, seaweed, sinking heart, breaking heart, thought bubble, rising photos, messages, calendar, clock, steam, sunlight, summer-to-autumn, train, wind, portrait, aurora, fireworks, shooting star)
+* `mvmaker/fx.py` animated lyric effects (tide, footprints, sand heart, boat, seagulls, lighthouse beam, lightning, rays, bubbles, seaweed, sinking heart, breaking heart, thought bubble, rising photos, messages, calendar, clock, steam, sunlight, summer-to-autumn, train, wind, portrait, ripples, aurora, fireworks, shooting star)
 * `mvmaker/scenes.py` background library (one function per scene; `POOLS` = scenes per mood, used only in template mode)
 * `mvmaker/character.py` box characters (expressions, accessories, walk cycle) as cached sprites
 * `mvmaker/render.py` storyboard planning, camera, particles, emotes, title card, karaoke subtitles, parallel encode

@@ -21,7 +21,7 @@ Storyboard format (world coordinates are 2150 x 1209; the frame shows the middle
 who: hero ("I"), partner ("you"), extra (a third person, e.g. the one who took my place), crowd.
 acts: stand, walk (x -> x1), sit, float, sink (y -> y1), boat (sits in a rocking boat), dance.
 more cast keys: "look": [colour, accessory, accessory colour] (e.g. white "hair" for old age), "scarf": colour,
-  "guitar": true, "cane": true, "backpack": colour,
+  "guitar": true, "cane": true, "backpack": colour, "drink": true,
   "phone": true (glowing phone in hand), "umbrella_dx": px (shift the umbrella over someone beside you),
   "hull": 0 (sit in someone else's boat; 1.5 = a wider boat for two), "z": 1 (draw on top), "arms": 0/1/2,
   crowd: {"who": "crowd", "n": 12, "umbrella": true, "colorful": true}
@@ -70,6 +70,7 @@ class SActor:
         self.guitar = d.get("guitar", False)           # playing a guitar (指尖弹出盛夏)
         self.cane = d.get("cane", False)               # walking stick (old age)
         self.backpack = d.get("backpack")              # colour of a travel backpack
+        self.drink = d.get("drink", False)             # a glass of wine in hand (深夜里买醉)
         self.arms = d.get("arms", 0)
         self.phase = d.get("phase", random.random() * 3)
         self.sort_y = max(self.y0, self.y1) + 10000 * d.get("z", 0)
@@ -279,6 +280,16 @@ def draw_actor(world, a, ctx, f, ai, energy, pulse, singing):
         for cx, cy, r in ((gx - 30 * s, gy + 10 * s, 62 * s), (gx + 30 * s, gy - 8 * s, 48 * s)):
             d.ellipse([cx - r, cy - r * 0.8, cx + r, cy + r * 0.8], fill=gb + (255,), outline=OUTLINE, width=max(2, int(5 * s)))
         d.ellipse([gx - 10 * s, gy - 18 * s, gx + 18 * s, gy + 8 * s], fill=(70, 45, 35, 255))
+    if a.drink:      # wine glass held out to the right, tilting a little
+        gx, gy = x + 150 * s, body_bottom - 70 * s
+        tilt = 6 * s * math.sin(t * 1.3)
+        cup = [(gx - 26 * s + tilt, gy - 70 * s), (gx + 26 * s + tilt, gy - 70 * s), (gx + 4 * s, gy - 20 * s), (gx - 4 * s, gy - 20 * s)]
+        wine = [(gx - 18 * s + tilt, gy - 56 * s), (gx + 18 * s + tilt, gy - 56 * s), (gx + 4 * s, gy - 24 * s), (gx - 4 * s, gy - 24 * s)]
+        d.polygon(cup, fill=(235, 240, 250, 170), outline=OUTLINE)
+        d.polygon(wine, fill=(170, 30, 60, 235))
+        d.line(cup + [cup[0]], fill=OUTLINE, width=max(2, int(4 * s)))
+        d.line([(gx, gy - 20 * s), (gx, gy + 10 * s)], fill=OUTLINE, width=max(2, int(5 * s)))
+        d.line([(gx - 16 * s, gy + 12 * s), (gx + 16 * s, gy + 12 * s)], fill=OUTLINE, width=max(2, int(5 * s)))
     if a.cane:
         cx = x + 150 * s
         d.line([(cx, body_bottom - 70 * s), (cx + 14 * s, y_feet + bob)], fill=(120, 80, 55, 255), width=max(3, int(9 * s)))

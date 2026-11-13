@@ -1,0 +1,242 @@
+{
+  "hero": ["#e08a52", "cap"],
+  "partner": ["#e59ab0", "flower"],
+  "cover": 11,
+  "cover_face": "neutral",
+  "shots": [
+    {"note": "（前奏）夜里的海",
+     "set": "beach", "time": "night",
+     "fx": ["waves", {"name": "tide", "amp": 150, "period": 5}], "cam": "pull"},
+
+    {"from": 10.0, "note": "（前奏）她一个人在雨里",
+     "set": "city_rain", "time": "night",
+     "cast": [{"who": "partner", "x": 1150, "face": "cry", "s": 21}],
+     "weather": "rain", "cam": "push"},
+
+    {"from": 20.0, "note": "（前奏）深夜的酒吧",
+     "set": "bar", "time": "night",
+     "cast": [{"who": "partner", "x": 1090, "face": "sad", "drink": true, "emote": "cloud"}],
+     "weather": "dust", "cam": "push"},
+
+    {"lines": [0], "note": "不问你为何流眼泪",
+     "set": "city_rain", "time": "night",
+     "cast": [{"who": "hero", "x": 600, "x1": 880, "act": "walk", "face": "neutral", "umbrella": "#d9473f", "umbrella_dx": 150, "t1": 0.55},
+              {"who": "partner", "x": 1160, "face": "cry"}],
+     "weather": "rain", "cam": "push"},
+
+    {"lines": [1], "note": "不在乎你心里还有谁",
+     "set": "rooftop", "time": "night",
+     "cast": [{"who": "partner", "x": 1200, "face": "sad"}, {"who": "hero", "x": 880, "face": "neutral"}],
+     "fx": [{"name": "dream", "x": 1500, "y": 360, "r": 160, "from": [1250, 620], "color": "#8fb3d9", "accessory": "cap", "face": "neutral"}],
+     "weather": "fireflies", "cam": "push"},
+
+    {"lines": [2], "note": "且让我给你安慰",
+     "set": "park", "time": "dusk",
+     "cast": [{"who": "hero", "x": 930, "act": "sit", "face": "neutral", "arms": 2},
+              {"who": "partner", "x": 1225, "act": "sit", "face": "cry"}],
+     "weather": "leaves", "cam": "close"},
+
+    {"lines": [3], "note": "不论结局是喜是悲",
+     "set": "beach", "time": "dusk",
+     "cast": [{"who": "hero", "x": 950, "y": 985, "back": true, "s": 19}, {"who": "partner", "x": 1200, "y": 985, "back": true, "s": 19}],
+     "fx": ["waves", {"name": "tide", "amp": 60, "period": 6}], "cam": "push"},
+
+    {"lines": [4], "note": "走过千山万水",
+     "set": "mountains", "time": "dusk",
+     "cast": [{"who": "hero", "x": 150, "x1": 700, "y": 962, "act": "walk", "face": "neutral", "backpack": "#5f86a8"}],
+     "fx": [{"name": "wind", "strength": 0.5}], "cam": "pan_right"},
+
+    {"lines": [5], "note": "在我心里你永远是那么美",
+     "set": "meadow", "time": "dusk",
+     "cast": [{"who": "partner", "x": 1075, "face": "happy", "s": 24, "emote": "sparkle"}],
+     "fx": [{"name": "sunlight", "x": 1075, "y": 985}], "weather": "petals", "cam": "close"},
+
+    {"lines": [6], "note": "既然爱了就不后悔",
+     "set": "pier", "time": "night",
+     "cast": [{"who": "hero", "x": 1300, "back": true, "umbrella": "#d9473f"}],
+     "fx": ["waves"], "weather": "rain", "cam": "push"},
+
+    {"lines": [7], "note": "再多的苦我也愿意背",
+     "set": "city_rain", "time": "night",
+     "cast": [{"who": "hero", "x": 400, "x1": 1100, "act": "walk", "face": "neutral", "backpack": "#6a5a7a", "umbrella": "#d9473f"}],
+     "weather": "storm", "cam": "pan_right"},
+
+    {"lines": [8], "note": "我的爱如潮水",
+     "set": "beach", "time": "night",
+     "cast": [{"who": "hero", "x": 1075, "y": 985, "back": true, "s": 20}],
+     "fx": ["waves", {"name": "tide", "amp": 170, "period": 3.5}], "cam": "pull"},
+
+    {"lines": [9, 10], "note": "爱如潮水将我向你推 紧紧跟随",
+     "set": "beach", "time": "dusk",
+     "cast": [{"who": "hero", "x": 450, "x1": 950, "y": 985, "act": "walk", "face": "love", "s": 19},
+              {"who": "partner", "x": 1250, "y": 985, "face": "sad", "s": 19}],
+     "fx": ["waves", {"name": "tide", "amp": 150, "period": 3.3}], "cam": "pan_right"},
+
+    {"lines": [11], "note": "爱如潮水它将你我包围",
+     "set": "island", "time": "night",
+     "cast": [{"who": "hero", "x": 960, "s": 14, "face": "love"}, {"who": "partner", "x": 1110, "s": 14, "face": "happy"}],
+     "fx": ["waves", {"name": "ripples", "x": 1075, "y": 880, "rx": 900, "ry": 230, "rx_min": 340, "ry_min": 60}],
+     "cam": "pull"},
+
+    {"lines": [12], "note": "我再也不愿见你在深夜里买醉",
+     "set": "bar", "time": "night",
+     "cast": [{"who": "partner", "x": 1090, "face": "sleepy", "drink": true}],
+     "weather": "dust", "cam": "close"},
+
+    {"lines": [13], "note": "不愿别的男人见识你的妩媚",
+     "set": "bar", "time": "night",
+     "cast": [{"who": "partner", "x": 1090, "act": "dance", "face": "happy", "drink": true},
+              {"who": "extra", "x": 780, "face": "love", "emote": "heart", "look": ["#7d8496", "cap", "#4a4f63"]},
+              {"who": "extra", "x": 1420, "face": "love", "look": ["#6f7688", "hair", "#2f2a3a"]},
+              {"who": "hero", "x": 330, "face": "sad", "s": 17}],
+     "weather": "dust", "cam": "static"},
+
+    {"lines": [14], "note": "你该知道这样会让我心碎",
+     "set": "city_rain", "time": "night",
+     "cast": [{"who": "hero", "x": 1075, "face": "cry"}],
+     "fx": [{"name": "heart_break", "x": 1075, "y": 330, "size": 130, "at": 0.15}], "weather": "rain", "cam": "push"},
+
+    {"lines": [15], "note": "答应我你从此不在深夜里徘徊",
+     "set": "city_night", "time": "night",
+     "cast": [{"who": "partner", "x": 1200, "x1": 800, "act": "walk", "face": "sad"},
+              {"who": "hero", "x": 1750, "x1": 1400, "act": "walk", "face": "neutral", "umbrella": "#d9473f"}],
+     "weather": "rain", "cam": "pan_left"},
+
+    {"lines": [16], "note": "不要轻易尝试放纵的滋味",
+     "set": "bar", "time": "night",
+     "cast": [{"who": "crowd", "n": 12, "colorful": true},
+              {"who": "partner", "x": 1090, "act": "dance", "face": "happy", "drink": true}],
+     "weather": "dust", "cam": "push"},
+
+    {"lines": [17], "note": "你可知道这样会让我心碎",
+     "set": "rooftop", "time": "night",
+     "cast": [{"who": "hero", "x": 1075, "back": true}],
+     "fx": [{"name": "heart_break", "x": 1075, "y": 360, "size": 130, "at": 0.2}], "weather": "fireflies", "cam": "pull"},
+
+    {"from": 121.6, "note": "（间奏）一个人的海边",
+     "set": "beach", "time": "night",
+     "cast": [{"who": "hero", "x": 1075, "y": 985, "act": "sit", "back": true, "s": 19}],
+     "fx": ["waves", {"name": "tide", "amp": 140, "period": 5}], "cam": "pull"},
+
+    {"from": 131.5, "note": "（间奏）路灯下等她",
+     "set": "city_rain", "time": "night",
+     "cast": [{"who": "hero", "x": 1450, "face": "sad", "umbrella": "#d9473f"}],
+     "weather": "rain", "cam": "push"},
+
+    {"from": 141.5, "note": "（间奏）发出去的消息",
+     "set": "bedroom", "time": "night",
+     "cast": [{"who": "hero", "x": 1780, "y": 745, "act": "sit", "face": "sad", "phone": true}],
+     "fx": [{"name": "messages", "x": 1420, "y": 640, "n": 5, "every": 1.6}], "weather": "dust", "cam": "push"},
+
+    {"lines": [18], "note": "既然爱了就无怨无悔",
+     "set": "pier", "time": "dusk",
+     "cast": [{"who": "hero", "x": 1330, "y": 904, "act": "sit", "back": true}],
+     "fx": ["waves"], "cam": "static"},
+
+    {"lines": [19], "note": "再多的苦我也愿意背",
+     "set": "snow_town", "time": "night",
+     "cast": [{"who": "hero", "x": 450, "x1": 1100, "act": "walk", "face": "neutral", "backpack": "#6a5a7a"}],
+     "weather": "snow", "cam": "pan_right"},
+
+    {"lines": [20], "note": "我的爱如潮水",
+     "set": "beach", "time": "dusk",
+     "cast": [{"who": "hero", "x": 700, "y": 985, "back": true, "s": 19}, {"who": "partner", "x": 1500, "y": 985, "back": true, "s": 19}],
+     "fx": ["waves", {"name": "tide", "amp": 170, "period": 3.5}], "cam": "pull"},
+
+    {"lines": [21, 22], "note": "爱如潮水将我向你推 紧紧跟随",
+     "set": "beach", "time": "night",
+     "cast": [{"who": "hero", "x": 450, "x1": 950, "y": 985, "act": "walk", "face": "love", "s": 19},
+              {"who": "partner", "x": 1250, "y": 985, "face": "neutral", "s": 19}],
+     "fx": ["waves", {"name": "tide", "amp": 150, "period": 3.3}], "cam": "pan_right"},
+
+    {"lines": [23], "note": "爱如潮水它将你我包围",
+     "set": "island", "time": "dusk",
+     "cast": [{"who": "hero", "x": 960, "s": 14, "face": "love"}, {"who": "partner", "x": 1110, "s": 14, "face": "love", "emote": "heart"}],
+     "fx": ["waves", {"name": "ripples", "x": 1075, "y": 880, "rx": 900, "ry": 230, "rx_min": 340, "ry_min": 60}],
+     "cam": "pull"},
+
+    {"lines": [24], "note": "我再也不愿见你在深夜里买醉",
+     "set": "bar", "time": "night",
+     "cast": [{"who": "partner", "x": 1200, "face": "sleepy", "drink": true}, {"who": "hero", "x": 880, "face": "sad"}],
+     "weather": "dust", "cam": "push"},
+
+    {"lines": [25], "note": "不愿别的男人见识你的妩媚",
+     "set": "bar", "time": "night",
+     "cast": [{"who": "partner", "x": 1090, "act": "dance", "face": "happy"},
+              {"who": "extra", "x": 780, "face": "love", "look": ["#7d8496", "cap", "#4a4f63"]},
+              {"who": "extra", "x": 1420, "face": "love", "emote": "heart", "look": ["#6f7688", "hair", "#2f2a3a"]}],
+     "weather": "dust", "cam": "close"},
+
+    {"lines": [26], "note": "你该知道这样会让我心碎",
+     "set": "city_night", "time": "night",
+     "cast": [{"who": "hero", "x": 1075, "face": "cry", "s": 22}],
+     "fx": [{"name": "heart_break", "x": 1075, "y": 330, "size": 130, "at": 0.15}], "weather": "rain", "cam": "close"},
+
+    {"lines": [27], "note": "答应我你从此不在深夜里徘徊",
+     "set": "city_rain", "time": "night",
+     "cast": [{"who": "partner", "x": 1200, "x1": 800, "act": "walk", "back": true},
+              {"who": "hero", "x": 1750, "x1": 1350, "act": "walk", "face": "sad", "umbrella": "#d9473f"}],
+     "weather": "rain", "cam": "pan_left"},
+
+    {"lines": [28], "note": "不要轻易尝试放纵的滋味",
+     "set": "bar", "time": "night",
+     "cast": [{"who": "crowd", "n": 12, "colorful": true},
+              {"who": "partner", "x": 1090, "act": "dance", "face": "sleepy", "drink": true}],
+     "weather": "dust", "cam": "pull"},
+
+    {"lines": [29], "note": "你可知道这样会让我心碎",
+     "set": "beach", "time": "night",
+     "cast": [{"who": "hero", "x": 1075, "y": 985, "face": "cry", "s": 20}],
+     "fx": ["waves", {"name": "heart_break", "x": 1075, "y": 330, "size": 120, "at": 0.2}], "cam": "push"},
+
+    {"lines": [30], "note": "我再也不愿见你在深夜里买醉（他走进酒吧）",
+     "set": "bar", "time": "night",
+     "cast": [{"who": "hero", "x": 600, "x1": 880, "act": "walk", "face": "sad", "t1": 0.5},
+              {"who": "partner", "x": 1200, "face": "cry", "drink": true}],
+     "weather": "dust", "cam": "push"},
+
+    {"lines": [31], "note": "不愿别的男人见识你的妩媚（他挡在前面）",
+     "set": "city_night", "time": "night",
+     "cast": [{"who": "crowd", "n": 10},
+              {"who": "hero", "x": 950, "face": "neutral", "umbrella": "#d9473f", "umbrella_dx": 150, "s": 22},
+              {"who": "partner", "x": 1210, "face": "sad", "s": 22}],
+     "weather": "rain", "cam": "push"},
+
+    {"lines": [32], "note": "你该知道这样会让我心碎",
+     "set": "park", "time": "dusk",
+     "cast": [{"who": "hero", "x": 930, "act": "sit", "face": "cry"}, {"who": "partner", "x": 1225, "act": "sit", "face": "sad"}],
+     "weather": "leaves", "cam": "close"},
+
+    {"lines": [33], "note": "答应我你从此不在深夜里徘徊（一起回家）",
+     "set": "city_rain", "time": "night",
+     "cast": [{"who": "hero", "x": 600, "x1": 1000, "act": "walk", "face": "neutral", "umbrella": "#d9473f", "umbrella_dx": 150},
+              {"who": "partner", "x": 860, "x1": 1260, "act": "walk", "face": "neutral"}],
+     "weather": "rain", "cam": "pan_right"},
+
+    {"lines": [34], "note": "不要轻易尝试放纵的滋味",
+     "set": "kitchen", "time": "night",
+     "cast": [{"who": "hero", "x": 1250, "face": "happy"}, {"who": "partner", "x": 930, "face": "neutral"}],
+     "fx": ["steam"], "cam": "push"},
+
+    {"lines": [35], "note": "你可知道这样会让我心碎",
+     "set": "beach", "time": "dusk",
+     "cast": [{"who": "hero", "x": 950, "y": 985, "face": "love", "s": 19}, {"who": "partner", "x": 1200, "y": 985, "face": "love", "s": 19, "emote": "heart"}],
+     "fx": ["waves", {"name": "tide", "amp": 120, "period": 4}], "cam": "pull"},
+
+    {"from": 240.4, "note": "（尾声）潮水环绕着我们",
+     "set": "island", "time": "night",
+     "cast": [{"who": "hero", "x": 990, "y": 866, "act": "sit", "s": 13, "back": true},
+              {"who": "partner", "x": 1110, "y": 866, "act": "sit", "s": 13, "back": true}],
+     "fx": ["waves", {"name": "ripples", "x": 1075, "y": 880, "rx": 900, "ry": 230, "rx_min": 340, "ry_min": 60}, {"name": "shooting_star", "period": 3.0}],
+     "cam": "pull"},
+
+    {"from": 251.5, "note": "（尾声）潮水带走脚印",
+     "set": "beach", "time": "dusk",
+     "fx": ["waves", {"name": "footprints", "x0": 200, "x1": 1900, "y": 960, "tide": {"amp": 150, "period": 5}},
+            {"name": "tide", "amp": 150, "period": 5}], "cam": "static"},
+
+    {"from": 263.0, "note": "（尾声）夜里的海",
+     "set": "beach", "time": "night",
+     "fx": ["waves", {"name": "tide", "amp": 150, "period": 5}], "cam": "pull"}
+  ]
+}
