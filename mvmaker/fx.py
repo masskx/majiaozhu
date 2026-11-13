@@ -12,7 +12,7 @@ from PIL import Image, ImageChops, ImageDraw
 from .common import OUTLINE, WH, WW, add_glow, ease, heart_points, star_points
 
 BACK = {"waves", "tide", "footprints", "sand_heart", "boat_far", "seagulls", "rays", "beam", "lightning",
-        "shooting_star", "clock", "aurora", "fireworks", "sunbeam", "calendar", "steam", "sunlight", "autumn_turn", "train", "portrait"}
+        "shooting_star", "clock", "aurora", "fireworks", "sunbeam", "calendar", "steam", "sunlight", "autumn_turn", "train", "portrait", "ripples"}
 
 
 def _d(img):
@@ -555,6 +555,23 @@ def fx_portrait(img, p, ctx):
     sp = sp.rotate(p.get("tilt", -6), resample=Image.BICUBIC, expand=True)   # head bowed a little
     img.paste(sp, (int(x - sp.width / 2), int(y + h / 2 - sp.height + 30)), sp)
     add_glow(img, x, y, max(w, h) * 0.9, (255, 220, 170), 0.25 + 0.08 * math.sin(ctx["t"] * 1.3))
+
+
+def fx_ripples(img, p, ctx):
+    """Rings of water spreading out and closing around a spot (爱如潮水 它将你我包围)."""
+    t = ctx["t"]
+    x, y = p.get("x", 1075), p.get("y", 880)
+    rx_max, ry_max = p.get("rx", 620), p.get("ry", 150)
+    d = _d(img)
+    n = int(p.get("n", 5))
+    for k in range(n):
+        ph = (t * p.get("speed", 0.25) + k / n) % 1.0
+        f = 1 - ph if p.get("inward", True) else ph      # rings travel in towards the pair
+        rx0, ry0 = p.get("rx_min", 120), p.get("ry_min", 30)
+        rx, ry = rx0 + (rx_max - rx0) * f, ry0 + (ry_max - ry0) * f
+        a = int(170 * math.sin(math.pi * ph))
+        d.ellipse([x - rx, y - ry, x + rx, y + ry], outline=(225, 238, 255, a), width=5)
+        d.ellipse([x - rx * 0.97, y - ry * 0.9, x + rx * 0.97, y + ry * 0.9], outline=(150, 180, 230, a // 2), width=2)
 
 
 def draw(img, effects, ctx, back):

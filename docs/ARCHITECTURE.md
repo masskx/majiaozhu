@@ -39,7 +39,7 @@ Transcription details: faster-whisper `large-v3-turbo` with int8 on the CPU, `la
   * `back` draws the faceless back view; `umbrella` draws a scalloped umbrella (`umbrella_dx` shifts it over someone else);
   * `look` overrides colour/accessory per shot (white `hair` = old age); `scarf` and `phone` draw props on the body;
   * `hull` sizes the boat (0 = sitting in someone else's boat); `z` lifts a character above others;
-  * `guitar`, `cane` and `backpack` draw props (backpack behind the body; guitar strums with a small wobble);
+  * `guitar`, `cane`, `backpack` and `drink` draw props (backpack behind the body; guitar strums with a small wobble);
   * crowds are generated grey walkers in two depth rows;
   * named characters are drawn after the crowd.
 * **Effects** (`fx.draw`): names in `fx.BACK` are drawn behind the characters, the rest in front.
